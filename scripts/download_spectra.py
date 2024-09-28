@@ -3,7 +3,6 @@
 #%% Imports
 
 import os, argparse, time
-#import logging
 
 from tqdm import tqdm
 

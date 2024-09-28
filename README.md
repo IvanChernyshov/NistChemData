@@ -11,23 +11,36 @@ As **NistChemPy** continues to evolve and enhance its extraction capabilities, w
 
 ## Data Cookbook
 
+### [Compounds](data/compounds.csv)
+
+A tabular list of compounds from the NIST Chemistry WebBook, including the following parameters:
+
+    - *ID* (str): NIST Chemistry WebBook Compound ID;
+    
+    - *name* (str): chemical name;
+    
+    - *synonyms* (str): alternative chemical names, separated by "\n";
+    
+    - *formula* (str): chemical formula;
+    
+    - *cas_rn* (str): CAS Registry Number;
+    
+    - *mol_weight* (float): molar weight, g/mol;
+    
+    - *inchi* (str): InChI string;
+    
+    - *inchi_key* (str): InChI Key string.
+
+
 ### [Spectra](data/spectra/)
 
-1. [Raw Spectra](data/spectra/init): contains JDX-formatted IR, THz, MS, and UV-Vis spectra. Spectra are organized by type and archived in zip files. 
+1. [Raw spectra](data/spectra/init): contains JDX-formatted IR, THz, MS, and UV-Vis spectra. Spectra are organized by type and archived in zip files. 
 
     - File naming convention: {NIST Compound ID}\_{Spectrum Type}\_{Spectrum Index}.
 
 2. [Processed MS data](data/spectra/ms.csv): contains information on electron ionization mass spectrometry (MS) spectra, including the following fields:
 
-    - *ID* (str): NIST Compound ID;
-    
-    - *name* (str): chemical name of the compound;
-    
-    - *formula* (str): chemical formula of the compound;
-    
-    - *cas* (str): CAS Registry Number of the compound;
-    
-    - *inchi* (str): InChI string of the compound;
+    - *ID* / *formula* / *inchi* (str): same as in [compounds.csv](data/compounds.csv);
     
     - *mz1* ... *mz255* (float): relative intensities (normalized to 1000) of peacks with m/z values ranging from 0 to 255 Da.
 
