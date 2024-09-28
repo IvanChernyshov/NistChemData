@@ -15,21 +15,21 @@ As **NistChemPy** continues to evolve and enhance its extraction capabilities, w
 
 A tabular list of compounds from the NIST Chemistry WebBook, including the following parameters:
 
-    - *ID* (str): NIST Chemistry WebBook Compound ID;
-    
-    - *name* (str): chemical name;
-    
-    - *synonyms* (str): alternative chemical names, separated by "\n";
-    
-    - *formula* (str): chemical formula;
-    
-    - *cas_rn* (str): CAS Registry Number;
-    
-    - *mol_weight* (float): molar weight, g/mol;
-    
-    - *inchi* (str): InChI string;
-    
-    - *inchi_key* (str): InChI Key string.
+- *ID* (str): NIST Chemistry WebBook Compound ID;
+
+- *name* (str): chemical name;
+
+- *synonyms* (str): alternative chemical names, separated by "\n";
+
+- *formula* (str): chemical formula;
+
+- *cas_rn* (str): CAS Registry Number;
+
+- *mol_weight* (float): molar weight, g/mol;
+
+- *inchi* (str): InChI string;
+
+- *inchi_key* (str): InChI Key string.
 
 
 ### [Spectra](data/spectra/)
