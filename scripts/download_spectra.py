@@ -33,19 +33,26 @@ def download_spectra(dir_out: str, spec_type: str, crawl_delay: float = 5) -> No
     
     # start downloading
     for ID in tqdm(IDs):
-        X = nist.get_compound(ID)
-        if not X:
-            tqdm.write(f'Can not load the compound: {ID}')
-            pass
-        getattr(X, method)()
-        n_specs = len(getattr(X, specs))
-        if not n_specs:
-            tqdm.write(f'No spectra were downloaded for the compound: {ID}')
-            time.sleep(crawl_delay)
-            continue
-        # save spectra
-        getattr(X, save)(dir_out)
-        time.sleep(min(30, crawl_delay*n_specs))
+        try:
+            # load compound
+            X = nist.get_compound(ID)
+            if not X:
+                tqdm.write(f'Can not load the compound: {ID}')
+                pass
+            # load spectra
+            getattr(X, method)()
+            n_specs = len(getattr(X, specs))
+            if not n_specs:
+                tqdm.write(f'No spectra were downloaded for the compound: {ID}')
+                time.sleep(crawl_delay)
+                continue
+            # save spectra
+            getattr(X, save)(dir_out)
+        except (KeyboardInterrupt, SystemError, SystemExit):
+            raise
+        except:
+            tqdm.write(f'Error while processing compound # {ID}')
+        time.sleep(min(30, crawl_delay*(n_specs + 1)))
     
     return
 
