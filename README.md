@@ -44,5 +44,5 @@ A tabular list of compounds from the NIST Chemistry WebBook, including the follo
 
     - *ID* / *name* / *inchi* (str): same as in [compounds.csv](data/compounds.csv);
     
-    - *"14"* ... *"279"* (int): relative intensities (normalized to 9999) of peacks with m/z values ranging from 0 to 279 Da.
+    - *"14"* ... *"279"* (int): relative intensities (normalized to 9999) of peaks with m/z values ranging from 0 to 279 Da.
 
