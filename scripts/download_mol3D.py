@@ -8,8 +8,6 @@ import requests
 
 from tqdm import tqdm
 
-from rdkit import Chem
-
 import nistchempy as nist
 
 
@@ -45,7 +43,7 @@ def download_mol3D(dir_mol: str, crawl_delay: float = 5) -> None:
         # save text
         path_mol = os.path.join(dir_mol, f'{ID}.mol')
         with open(path_mol, 'w') as outf:
-            outf.write(r.text)
+            outf.write(r.text.replace('\r\n', '\n'))
     
     return
 
@@ -58,22 +56,18 @@ def save_sdf(dir_mol: str, path_sdf: str) -> None:
         path_sdf (str): path to save output SDF file
     
     '''
-    mols = []
+    text = []
     
-    # get molfiles
-    fs = [(f.replace('.mol', ''), os.path.join(dir_mol, f)) for f in os.listdir(dir_mol)]
-    for ID, f in tqdm(fs, total = len(fs)):
-        mol = Chem.MolFromMolFile(f, removeHs = False, sanitize = False, strictParsing = False)
-        if not mol:
-            tqdm.write(f'{ID}: unreadable MOL-file')
-            continue
-        mol.SetProp('ID', ID)
-        mols.append(mol)
+    # get molfile texts
+    fs = [os.path.join(dir_mol, f) for f in os.listdir(dir_mol)]
+    for f in tqdm(fs, total = len(fs)):
+        with open(f, 'r') as inpf:
+            add = inpf.read()
+        text.append(add)
     
     # save sdf
-    with Chem.SDWriter(path_sdf) as writer:
-        for mol in mols:
-            writer.write(mol)
+    with open(path_sdf, 'w') as outf:
+        outf.write(''.join(text))
     
     return
 
