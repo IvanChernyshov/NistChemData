@@ -34,6 +34,23 @@ A tabular list of compounds from the NIST Chemistry WebBook, including the follo
 - *inchi_key* (str): InChI Key string.
 
 
+### [3D atomic coordinates & QC properties](data/mol3D.sdf)
+
+SDF-file containing 3D atomic coordinates along with the following computed properties:
+
+- *WEBBOOK.ID*: NIST Chemistry WebBook Compound ID.
+
+- *METHOD*: quantum chemical approximation used for the computations.
+
+- *DIPOLE.MOMENT*: dipole moment.
+
+- *ELECTRONIC.ENERGY*: absolute electronic energy.
+
+- *IR.FREQUENCIES*: computed frequencies and their IR intensities.
+
+- *ROTATIONAL.CONSTANTS*: rotational constants.
+
+
 ### [Spectra](data/spectra/)
 
 1. [Raw spectra](data/spectra/init): contains JDX-formatted IR, THz, MS, and UV-Vis spectra. Spectra are organized by type and archived in zip files. 
