@@ -1,4 +1,4 @@
-'''Downloads NIST Chemistry WebBook sitemaps and extracts all compounds'''
+'''Downloads NIST Chemistry WebBook spectra'''
 
 #%% Imports
 
@@ -12,7 +12,14 @@ import nistchempy as nist
 #%% Functions
 
 def download_spectra(dir_out: str, spec_type: str, crawl_delay: float = 5) -> None:
-    '''Downloads NIST Chemistry WebBook spectra of the given type'''
+    '''Downloads NIST Chemistry WebBook spectra of the given type
+    
+    Arguments:
+        dir_out (str): output directory for JDX files
+        spec_type (str): IR / TZ / MS / UV
+        crawl_delay (float): interval between series of requests for different compounds
+    
+    '''
     
     # get correct column name
     key = 'c' + spec_type.upper()
