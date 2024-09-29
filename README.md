@@ -8,6 +8,8 @@ Data extraction was carried out using the [NistChemPy](https://github.com/IvanCh
 
 As **NistChemPy** continues to evolve and enhance its extraction capabilities, we will incorporate additional thermodynamic and spectral data into this repository.
 
+The scripts used to extract and prepare the data presented in this repository are located in the [scripts/](scripts/) folder.
+
 
 ## Data Cookbook
 
