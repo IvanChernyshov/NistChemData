@@ -40,7 +40,7 @@ A tabular list of compounds from the NIST Chemistry WebBook, including the follo
 
 2. [Processed MS data](data/spectra/ms.csv): contains information on electron ionization mass spectrometry (MS) spectra, including the following fields:
 
-    - *ID* / *formula* / *inchi* (str): same as in [compounds.csv](data/compounds.csv);
+    - *ID* / *name* / *inchi* (str): same as in [compounds.csv](data/compounds.csv);
     
-    - *mz1* ... *mz255* (float): relative intensities (normalized to 1000) of peacks with m/z values ranging from 0 to 255 Da.
+    - *"14"* ... *"279"* (int): relative intensities (normalized to 9999) of peacks with m/z values ranging from 0 to 279 Da.
 
