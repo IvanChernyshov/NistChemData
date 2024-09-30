@@ -35,7 +35,7 @@ def download_mol3D(dir_mol: str, crawl_delay: float = 5) -> None:
         r = requests.get(url)
         # errors
         if not r.ok:
-            tqdm.write(f'{ID}: {r.status} status code')
+            tqdm.write(f'{ID}: {r.status_code} status code')
             continue
         if not r.text.strip():
             tqdm.write(f'{ID}: empty file')
@@ -123,7 +123,7 @@ def main() -> None:
     check_arguments(args)
     
     # download
-    print('Downloading 3D MOL-files ...')
+    print('\nDownloading 3D MOL-files ...')
     download_mol3D(args.dir_mol, args.crawl_delay)
     
     # save sdf
