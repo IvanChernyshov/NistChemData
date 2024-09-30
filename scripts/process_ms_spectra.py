@@ -1,51 +1,34 @@
-'''Transforms raw MS spectra to the ready-to-go tabular format'''
+'''Transforms raw MS spectra to the ready-to-go JSON format'''
 
 #%% Imports
 
-import re, os, argparse, zipfile
+import re, os, argparse, zipfile, json
 
 import pandas as pd
 
 from tqdm import tqdm
 
-from typing import Dict
+from typing import Tuple, List
 
 
 #%% Functions
 
-def jdx_text_to_spectra(text: str) -> Dict[int, int]:
+def jdx_text_to_spectra(text: str) -> Tuple[List[int], List[int]]:
     '''Extracts MS spectra from the text block of JDX file
     
     Arguments:
         text (str): text of JDX file
     
     Returns:
-        Dict[int, int]: m/z => intensity dictionary
+        Tuple[List[int], List[int]]: m/z and intensity lists ordered by m/z
     
     '''
     MS = re.search(r'(\d+,\d+\s+)+', text).group(0).replace('\n', ' ').strip()
-    MS = {int(k): int(v) for k, v in [p.split(',') for p in MS.split()]}
+    MS = [(int(k), int(v)) for k, v in [p.split(',') for p in MS.split()]]
+    mz, intens = zip(*sorted(MS))
+    mz, intens = list(mz), list(intens)
     
-    return MS
-
-
-def dict_to_array(spec: Dict[int, int], mz_min: int, mz_max: int) -> Dict[str, int]:
-    '''Transforms m/z=>intensity dict to continuous col=>int dict
-    
-    Arguments:
-        spec (Dict[int, int]): m/z => intensity
-        mz_min (int): minimal m/z value
-        mz_max (int): maximal m/z value
-    
-    Returns:
-        Dict[str, int]: f"mz{m/z}" => intensity for each m/z between min & max
-    
-    '''
-    outp = {f'{mz}': 0 for mz in range(mz_min, mz_max + 1)}
-    for mz, intensity in spec.items():
-        outp[f'{mz}'] = intensity
-    
-    return outp
+    return mz, intens
 
 
 def process_ms_spectra(path_zip: str, path_comp: str, path_out: str) -> None:
@@ -57,7 +40,14 @@ def process_ms_spectra(path_zip: str, path_comp: str, path_out: str) -> None:
         path_out (str): output csv file
     
     '''
+    # prepare names and inchis
+    main = pd.read_csv(path_comp)
+    main = main[['ID', 'name', 'inchi']]
+    main = main.set_index('ID')
+    
+    # output
     data = []
+    
     # prepare ZIP
     with zipfile.ZipFile(path_zip, 'r') as zipf:
         # iterate files
@@ -70,25 +60,15 @@ def process_ms_spectra(path_zip: str, path_comp: str, path_out: str) -> None:
                 continue
             # read file
             text = zipf.read(f).decode()
-            MS = jdx_text_to_spectra(text)
-            data.append( (ID, MS) )
+            mz, intens = jdx_text_to_spectra(text)
+            item = {'ID': ID, 'name': main.loc[ID, 'name'],
+                    'inchi': main.loc[ID, 'inchi'], 'mz': mz,
+                    'intensities': intens}
+            data.append(item)
     
-    # get min and max m/z
-    mz_min, mz_max = float('inf'), 0
-    for ID, MS in data:
-        mz_min = min(mz_min, min(MS))
-        mz_max = max(mz_max, max(MS))
-    
-    # prepare dataframe
-    main = pd.read_csv(path_comp)
-    main = main[['ID', 'name', 'inchi']]
-    df = [{'ID': ID, **dict_to_array(MS, mz_min, mz_max)} for ID, MS in data]
-    df = pd.DataFrame(df)
-    df = main.merge(df, on = 'ID', how = 'right')
-    df = df.sort_values('ID', ignore_index = True)
-    
-    # save dataframe
-    df.to_csv(path_out, index = None)
+    # save JSON
+    with open(path_out, 'w') as outf:
+        json.dump(data, outf, indent = 0)
     
     return
 
@@ -102,10 +82,10 @@ def get_arguments() -> argparse.Namespace:
         argparse.Namespace: CLI arguments
     
     '''
-    parser = argparse.ArgumentParser(description = 'Transforms raw MS spectra to the tabular format')
+    parser = argparse.ArgumentParser(description = 'Transforms raw MS spectra to the JSON format')
     parser.add_argument('path_zip', help = 'zip-file containing raw MS spectra')
     parser.add_argument('path_comp', help = 'compounds.csv')
-    parser.add_argument('path_out', help = 'output csv file')
+    parser.add_argument('path_out', help = 'output JSON file')
     args = parser.parse_args()
     
     return args
@@ -133,7 +113,7 @@ def check_arguments(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    '''Processes MS spectra and saves them to csv file'''
+    '''Processes MS spectra and saves them to json file'''
     
     # prepare arguments
     args = get_arguments()

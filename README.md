@@ -13,53 +13,53 @@ The scripts used to extract and prepare the data presented in this repository ar
 
 ## Data Cookbook
 
-### [Compounds](data/compounds.csv)
+### [Compounds](data/nist_compounds.csv)
 
 A tabular list of compounds from the NIST Chemistry WebBook, including the following parameters:
 
-- *ID* (str): NIST Chemistry WebBook Compound ID;
+- `ID` (str): NIST Chemistry WebBook Compound ID;
 
-- *name* (str): chemical name;
+- `name` (str): chemical name;
 
-- *synonyms* (str): alternative chemical names, separated by "\n";
+- `synonyms` (str): alternative chemical names, separated by "\n";
 
-- *formula* (str): chemical formula;
+- `formula` (str): chemical formula;
 
-- *cas_rn* (str): CAS Registry Number;
+- `cas_rn` (str): CAS Registry Number;
 
-- *mol_weight* (float): molar weight, g/mol;
+- `mol_weight` (float): molar weight, g/mol;
 
-- *inchi* (str): InChI string;
+- `inchi` (str): InChI string;
 
-- *inchi_key* (str): InChI Key string.
+- `inchi_key` (str): InChI Key string.
 
 
-### [3D atomic coordinates & QC properties](data/mol3D.sdf)
+### [3D atomic coordinates & QC properties](data/nist_mol3D.sdf)
 
 SDF-file containing 3D atomic coordinates along with the following computed properties:
 
-- *WEBBOOK.ID*: NIST Chemistry WebBook Compound ID.
+- `WEBBOOK.ID`: NIST Chemistry WebBook Compound ID.
 
-- *METHOD*: quantum chemical approximation used for the computations.
+- `METHOD`: quantum chemical approximation used for the computations.
 
-- *DIPOLE.MOMENT*: dipole moment.
+- `DIPOLE.MOMENT`: dipole moment.
 
-- *ELECTRONIC.ENERGY*: absolute electronic energy.
+- `ELECTRONIC.ENERGY`: absolute electronic energy.
 
-- *IR.FREQUENCIES*: computed frequencies and their IR intensities.
+- `IR.FREQUENCIES`: computed frequencies and their IR intensities.
 
-- *ROTATIONAL.CONSTANTS*: rotational constants.
+- `ROTATIONAL.CONSTANTS`: rotational constants.
 
 
-### [Spectra](data/spectra/)
+### Spectra
 
-1. [Raw spectra](data/spectra/init): contains JDX-formatted IR, THz, MS, and UV-Vis spectra. Spectra are organized by type and archived in zip files. 
+1. [Raw spectra](data/raw_spectra/): contains JDX-formatted [IR](data/raw_spectra/nist_IR.zip), [THz](data/raw_spectra/nist_TZ.zip), [MS](data/raw_spectra/nist_MS.zip), and [UV-Vis](data/raw_spectra/nist_UV.zip) spectra. Spectra are organized by type and archived in zip files.
 
     - File naming convention: {NIST Compound ID}\_{Spectrum Type}\_{Spectrum Index}.
 
-2. [Processed MS data](data/spectra/ms.csv): contains information on electron ionization mass spectrometry (MS) spectra, including the following fields:
+2. [Processed MS data](data/nist_ms.json): contains information on electron ionization mass spectrometry (MS) spectra, including the following fields:
 
-    - *ID* / *name* / *inchi* (str): same as in [compounds.csv](data/compounds.csv);
+    - `ID` / `name` / `inchi` (str): same as in [nist_compounds.csv](data/nist_compounds.csv);
     
-    - *"14"* ... *"279"* (int): relative intensities (normalized to 9999) of peaks with m/z values ranging from 0 to 279 Da.
+    - `mz` & `intensities` (list\[int\]): lists of m/z values and relative intensities normalized to 9999.
 
