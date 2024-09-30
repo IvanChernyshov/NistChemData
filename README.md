@@ -56,6 +56,8 @@ SDF-file containing 3D atomic coordinates along with the following computed prop
 1. [Raw spectra](data/raw_spectra/): contains JDX-formatted [IR](data/raw_spectra/nist_IR.zip), [THz](data/raw_spectra/nist_TZ.zip), [MS](data/raw_spectra/nist_MS.zip), and [UV-Vis](data/raw_spectra/nist_UV.zip) spectra. Spectra are organized by type and archived in zip files.
 
     - File naming convention: {NIST Compound ID}\_{Spectrum Type}\_{Spectrum Index}.
+    
+    - Please note that some spectra (primarily IR) of the same component may appear identical, differing only in resolution (number of points per micrometer).
 
 2. [Processed MS data](data/nist_ms.json): contains information on electron ionization mass spectrometry (MS) spectra, including the following fields:
 
