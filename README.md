@@ -2,7 +2,7 @@
 
 **NistChemData** is a repository for physico-chemical data extracted from the [NIST Chemistry WebBook](https://webbook.nist.gov/). 
 
-Currently, it includes spectral data, such as IR, THz IR, MS, and UV-Vis.
+Currently, it includes spectral (IR, THz IR, MS, UV-Vis) and quantum chemical data.
 
 Data extraction was carried out using the [NistChemPy](https://github.com/IvanChernyshov/NistChemPy) package. For more details, please refer to the [scripts/](scripts/) directory.
 
