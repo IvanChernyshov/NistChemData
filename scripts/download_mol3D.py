@@ -32,7 +32,13 @@ def download_mol3D(dir_mol: str, crawl_delay: float = 5) -> None:
     # download files
     for ID, url in tqdm(zip(df.ID, df.mol3D), total = len(df)):
         time.sleep(crawl_delay)
-        r = requests.get(url)
+        try:
+            r = requests.get(url)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            tqdm.write(f'{ID}: error while getting response')
+            continue
         # errors
         if not r.ok:
             tqdm.write(f'{ID}: {r.status_code} status code')

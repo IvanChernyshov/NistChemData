@@ -55,7 +55,7 @@ def download_spectra(dir_out: str, spec_type: str, crawl_delay: float = 5) -> No
                 continue
             # save spectra
             getattr(X, save)(dir_out)
-        except (KeyboardInterrupt, SystemError, SystemExit):
+        except (KeyboardInterrupt, SystemExit):
             raise
         except:
             tqdm.write(f'Error while processing compound # {ID}')
