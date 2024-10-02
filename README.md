@@ -38,15 +38,15 @@ A tabular list of 129345 compounds from the NIST Chemistry WebBook, including th
 
 SDF-file containing 3D atomic coordinates for 48325 WebBook compounds along with the following computed properties:
 
-- `WEBBOOK.ID`: NIST Chemistry WebBook Compound ID.
+- `WEBBOOK.ID`: NIST Chemistry WebBook Compound ID;
 
-- `METHOD`: quantum chemical approximation used for the computations.
+- `METHOD`: quantum chemical approximation used for the computations;
 
-- `DIPOLE.MOMENT`: dipole moment.
+- `DIPOLE.MOMENT`: dipole moment;
 
-- `ELECTRONIC.ENERGY`: absolute electronic energy.
+- `ELECTRONIC.ENERGY`: absolute electronic energy;
 
-- `IR.FREQUENCIES`: computed frequencies and their IR intensities.
+- `IR.FREQUENCIES`: computed frequencies and their IR intensities;
 
 - `ROTATIONAL.CONSTANTS`: rotational constants.
 
@@ -63,7 +63,7 @@ SDF-file containing 3D atomic coordinates for 48325 WebBook compounds along with
     
     - 3063 [UV-Vis spectra](data/raw_spectra/nist_UV.zip) for 3057 compounds;
     
-    - File naming convention: {NIST Compound ID}\_{Spectrum Type}\_{Spectrum Index}.
+    - File naming convention: {NIST Compound ID}\_{Spectrum Type}\_{Spectrum Index};
     
     - Please note that some spectra (primarily IR) of the same component may appear identical, differing only in resolution (number of points per micrometer).
 
