@@ -15,7 +15,7 @@ The scripts used to extract and prepare the data presented in this repository ar
 
 ### [Compounds](data/nist_compounds.csv)
 
-A tabular list of compounds from the NIST Chemistry WebBook, including the following parameters:
+A tabular list of 129345 compounds from the NIST Chemistry WebBook, including the following parameters:
 
 - `ID` (str): NIST Chemistry WebBook Compound ID;
 
@@ -34,9 +34,9 @@ A tabular list of compounds from the NIST Chemistry WebBook, including the follo
 - `inchi_key` (str): InChI Key string.
 
 
-### [3D atomic coordinates & QC properties](data/nist_mol3D.sdf)
+### [3D atomic coordinates & QC properties](data/nist_mol3D.zip)
 
-SDF-file containing 3D atomic coordinates along with the following computed properties:
+SDF-file containing 3D atomic coordinates for 48325 WebBook compounds along with the following computed properties:
 
 - `WEBBOOK.ID`: NIST Chemistry WebBook Compound ID.
 
@@ -53,8 +53,16 @@ SDF-file containing 3D atomic coordinates along with the following computed prop
 
 ### Spectra
 
-1. [Raw spectra](data/raw_spectra/): contains JDX-formatted [IR](data/raw_spectra/nist_IR.zip), [THz](data/raw_spectra/nist_TZ.zip), [MS](data/raw_spectra/nist_MS.zip), and [UV-Vis](data/raw_spectra/nist_UV.zip) spectra. Spectra are organized by type and archived in zip files.
+1. [Raw spectra](data/raw_spectra/): contains JDX-formatted IR, THz, MS, and UV-Vis spectra. Spectra are organized by type and archived in zip files.
 
+    - 19582 [IR spectra](data/raw_spectra/nist_IR.zip) for 15890 compounds;
+    
+    - 35 [THz spectra](data/raw_spectra/nist_TZ.zip) for 32 compounds;
+    
+    - 33285 [MS spectra](data/raw_spectra/nist_MS.zip) for 33285 compounds;
+    
+    - 3063 [UV-Vis spectra](data/raw_spectra/nist_UV.zip) for 3057 compounds;
+    
     - File naming convention: {NIST Compound ID}\_{Spectrum Type}\_{Spectrum Index}.
     
     - Please note that some spectra (primarily IR) of the same component may appear identical, differing only in resolution (number of points per micrometer).

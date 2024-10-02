@@ -8,6 +8,10 @@ import requests
 
 from tqdm import tqdm
 
+from rdkit import Chem
+from rdkit import RDLogger
+RDLogger.DisableLog('rdApp.*') 
+
 import nistchempy as nist
 
 
@@ -63,9 +67,18 @@ def save_sdf(dir_mol: str, path_sdf: str) -> None:
     
     '''
     text = []
+    bad = []
+    
+    # check molfiles
+    fs = [os.path.join(dir_mol, f) for f in os.listdir(dir_mol)]
+    for f in tqdm(fs, total = len(fs)):
+        mol = Chem.MolFromMolFile(f, removeHs = False, sanitize = False, strictParsing = False)
+        if not mol:
+            bad.append(f)
+    print(f'{len(bad)} bad files detected')
     
     # get molfile texts
-    fs = [os.path.join(dir_mol, f) for f in os.listdir(dir_mol)]
+    fs = [f for f in fs if f not in bad]
     for f in tqdm(fs, total = len(fs)):
         with open(f, 'r') as inpf:
             add = inpf.read()

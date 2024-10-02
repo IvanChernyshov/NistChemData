@@ -16,5 +16,5 @@ All requirements are listed in [requirements.txt](requirements.txt).
 
 2. [process_ms_spectra.py](process_ms_spectra.py): transforms raw MS spectra to the ready-to-go JSON-format ([nist_ms.json](../data/nist_ms.json)).
 
-3. [download_mol3D.py](download_mol3D.py): downloads 3D MOL-files and transforms them into single SDF-file ([nist_mol3D.sdf](../data/nist_mol3D.sdf)).
+3. [download_mol3D.py](download_mol3D.py): downloads 3D MOL-files and transforms them into single SDF-file ([nist_mol3D.sdf](../data/nist_mol3D.zip)).
 
