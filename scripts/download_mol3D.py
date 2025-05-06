@@ -2,7 +2,7 @@
 
 #%% Imports
 
-import os, argparse, time
+import os, sys, argparse, time
 
 import requests
 
@@ -17,12 +17,14 @@ import nistchempy as nist
 
 #%% Functions
 
-def download_mol3D(dir_mol: str, crawl_delay: float = 5) -> None:
+def download_mol3D(dir_mol: str, crawl_delay: float = 1.0,
+                   timeout: float = 30.0) -> None:
     '''Downloads available WebBook's 3D MOL-files
     
     Arguments:
         dir_mol (str): directory for downloading MOL-files
         crawl_delay (float): interval between HTTP requests in seconds
+        timeout (float): max time to get response in seconds
     
     '''
     
@@ -31,15 +33,18 @@ def download_mol3D(dir_mol: str, crawl_delay: float = 5) -> None:
     df = df.loc[~df.mol3D.isna(), ['ID', 'mol3D']]
     # drop downloaded ones
     loaded = [f.replace('.mol', '') for f in os.listdir(dir_mol) if '.mol' in f]
+    loaded = sorted(loaded)[:-1] # reload last MOL-file
+    df = df.sort_values('ID').reset_index(drop=True)
     df = df.loc[~df.ID.isin(loaded)]
     
     # download files
     for ID, url in tqdm(zip(df.ID, df.mol3D), total = len(df)):
-        time.sleep(crawl_delay)
         try:
-            r = requests.get(url)
+            time.sleep(crawl_delay)
+            r = requests.get(url, timeout=timeout)
         except (KeyboardInterrupt, SystemExit):
-            raise
+            tqdm.write('The code execution was interrupted')
+            sys.exit()
         except:
             tqdm.write(f'{ID}: error while getting response')
             continue
@@ -106,6 +111,8 @@ def get_arguments() -> argparse.Namespace:
     parser.add_argument('path_sdf', help = 'output sdf file')
     parser.add_argument('--crawl-delay', type = float, default = 5,
                         help = 'pause between HTTP requests, seconds')
+    parser.add_argument('--timeout', type = float, default = 30.0,
+                        help = 'max time to get response, seconds')
     args = parser.parse_args()
     
     return args
@@ -130,6 +137,9 @@ def check_arguments(args: argparse.Namespace) -> None:
     # crawl delay
     if args.crawl_delay < 0:
         raise ValueError(f'--crawl-delay must be positive: {args.crawl_delay}')
+    # timeout
+    if args.timeout <= 0:
+        raise ValueError(f'--timeout must be positive: {args.timeout}')
     
     return
 
@@ -143,7 +153,7 @@ def main() -> None:
     
     # download
     print('\nDownloading 3D MOL-files ...')
-    download_mol3D(args.dir_mol, args.crawl_delay)
+    download_mol3D(args.dir_mol, args.crawl_delay, args.timeout)
     
     # save sdf
     print('\nGenerating SDF ...')

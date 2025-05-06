@@ -2,7 +2,7 @@
 
 #%% Imports
 
-import os, argparse, time
+import os, sys, argparse
 
 from tqdm import tqdm
 
@@ -11,13 +11,15 @@ import nistchempy as nist
 
 #%% Functions
 
-def download_spectra(dir_out: str, spec_type: str, crawl_delay: float = 5) -> None:
+def download_spectra(dir_out: str, spec_type: str, crawl_delay: float = 1.0,
+                     timeout: float = 30.0) -> None:
     '''Downloads NIST Chemistry WebBook spectra of the given type
     
     Arguments:
         dir_out (str): output directory for JDX files
         spec_type (str): IR / TZ / MS / UV
-        crawl_delay (float): interval between series of requests for different compounds
+        crawl_delay (float): interval between series of requests for different compounds, seconds
+        timeout (float): max time to get response, seconds
     
     '''
     
@@ -38,11 +40,14 @@ def download_spectra(dir_out: str, spec_type: str, crawl_delay: float = 5) -> No
     loaded = set(loaded[:-1]) # reload the last one
     IDs = [ID for ID in IDs if ID not in loaded]
     
+    # requests config
+    cfg = nist.RequestConfig(delay=crawl_delay, kwargs={'timeout': timeout})
+    
     # start downloading
     for ID in tqdm(IDs):
         try:
             # load compound
-            X = nist.get_compound(ID)
+            X = nist.get_compound(ID, cfg)
             if not X:
                 tqdm.write(f'Can not load the compound: {ID}')
                 pass
@@ -51,15 +56,14 @@ def download_spectra(dir_out: str, spec_type: str, crawl_delay: float = 5) -> No
             n_specs = len(getattr(X, specs))
             if not n_specs:
                 tqdm.write(f'No spectra were downloaded for the compound: {ID}')
-                time.sleep(crawl_delay)
                 continue
             # save spectra
             getattr(X, save)(dir_out)
         except (KeyboardInterrupt, SystemExit):
-            raise
+            tqdm.write('The code execution was interrupted')
+            sys.exit()
         except:
             tqdm.write(f'Error while processing compound # {ID}')
-        time.sleep(min(30, crawl_delay*(n_specs + 1)))
     
     return
 
@@ -79,6 +83,8 @@ def get_arguments() -> argparse.Namespace:
     parser.add_argument('spec_type', help = 'directory to save downloaded spectra')
     parser.add_argument('--crawl-delay', type = float, default = 5,
                         help = 'pause between HTTP requests, seconds')
+    parser.add_argument('--timeout', type = float, default = 30.0,
+                        help = 'max time to get response, seconds')
     args = parser.parse_args()
     
     return args
@@ -102,6 +108,9 @@ def check_arguments(args: argparse.Namespace) -> None:
     # crawl delay
     if args.crawl_delay < 0:
         raise ValueError(f'--crawl-delay must be positive: {args.crawl_delay}')
+    # timeout
+    if args.timeout <= 0:
+        raise ValueError(f'--timeout must be positive: {args.timeout}')
     
     return
 
@@ -115,7 +124,7 @@ def main() -> None:
     
     # download spectra
     print(f'\nDownloading {args.spec_type} spectra ...')
-    download_spectra(args.dir_out, args.spec_type, args.crawl_delay)
+    download_spectra(args.dir_out, args.spec_type, args.crawl_delay, args.timeout)
     print()
     
     return
