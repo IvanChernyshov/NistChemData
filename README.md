@@ -51,7 +51,7 @@ SDF-file containing 3D atomic coordinates for 48325 WebBook compounds along with
 - `ROTATIONAL.CONSTANTS`: rotational constants.
 
 
-### Spectra
+### [Spectra](data/raw_spectra/)
 
 1. [Raw spectra](data/raw_spectra/): contains JDX-formatted IR, THz, MS, and UV-Vis spectra. Spectra are organized by type and archived in zip files.
 
