@@ -6,6 +6,8 @@ import re, os, argparse
 
 import pandas as pd
 
+from jcamp import jcamp_readfile
+
 from tqdm import tqdm
 
 
@@ -25,8 +27,18 @@ def process_ir_spectra(dir_jdx: str) -> pd.core.frame.DataFrame | None:
         pd.core.frame.DataFrame: table containing meta-info on IR spectra
     
     '''
+    df = []
+    for filename in tqdm(os.listdir(dir_jdx)):
+        cID, _, sID = filename.replace('.jdx', '').split('_')
+        filepath = os.path.join(dir_jdx, filename)
+        X = jcamp_readfile(filepath)
+        for key in ('x', 'y'):
+            X.pop(key)
+        X = {'nist_compound_id': cID, 'nist_ir_id': sID, **X}
+        df.append(X)
+    df = pd.DataFrame(df)
     
-    return None
+    return df
 
 
 #%% Main functions
@@ -75,7 +87,7 @@ def main() -> None:
     print('\nProcessing IR spectra ...')
     df = process_ir_spectra(args.dir_jdx)
     if df is not None:
-        df.to_csv(args.path_out)
+        df.to_csv(args.path_out, index=None)
     print()
     
     return
