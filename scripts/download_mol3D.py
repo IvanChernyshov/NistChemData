@@ -17,8 +17,8 @@ import nistchempy as nist
 
 #%% Functions
 
-def download_mol3D(dir_mol: str, crawl_delay: float = 1.0,
-                   timeout: float = 30.0) -> None:
+def download_mol3D(dir_mol: str, crawl_delay: float = 0.25,
+                   timeout: float = 10.0) -> None:
     '''Downloads available WebBook's 3D MOL-files
     
     Arguments:
@@ -109,9 +109,9 @@ def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = 'Downloads all available NIST Chemistry WebBook 3D MOL-files')
     parser.add_argument('dir_mol', help = 'directory to save downloaded MOL-files')
     parser.add_argument('path_sdf', help = 'output sdf file')
-    parser.add_argument('--crawl-delay', type = float, default = 5,
+    parser.add_argument('--crawl-delay', type = float, default = 0.25,
                         help = 'pause between HTTP requests, seconds')
-    parser.add_argument('--timeout', type = float, default = 30.0,
+    parser.add_argument('--timeout', type = float, default = 10.0,
                         help = 'max time to get response, seconds')
     args = parser.parse_args()
     

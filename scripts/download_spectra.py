@@ -80,10 +80,10 @@ def get_arguments() -> argparse.Namespace:
     '''
     parser = argparse.ArgumentParser(description = 'Downloads all available NIST Chemistry WebBook spectra of the given type')
     parser.add_argument('dir_out', help = 'directory to save downloaded spectra')
-    parser.add_argument('spec_type', help = 'directory to save downloaded spectra')
-    parser.add_argument('--crawl-delay', type = float, default = 5,
+    parser.add_argument('spec_type', help = 'type of spectra: IR, TZ, MS, UV')
+    parser.add_argument('--crawl-delay', type = float, default = 0.25,
                         help = 'pause between HTTP requests, seconds')
-    parser.add_argument('--timeout', type = float, default = 30.0,
+    parser.add_argument('--timeout', type = float, default = 10.0,
                         help = 'max time to get response, seconds')
     args = parser.parse_args()
     
