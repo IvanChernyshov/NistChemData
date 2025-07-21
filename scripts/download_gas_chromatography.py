@@ -11,8 +11,8 @@ import nistchempy as nist
 
 #%% Functions
 
-def download_gas_chromatography(dir_out: str, crawl_delay: float = 1,
-                                timeout: float = 30) -> None:
+def download_gas_chromatography(dir_out: str, crawl_delay: float = 0.25,
+                                timeout: float = 10.0) -> None:
     '''Downloads NIST Chemistry WebBook data on gas chromatography
     
     Arguments:
@@ -70,9 +70,9 @@ def get_arguments() -> argparse.Namespace:
     '''
     parser = argparse.ArgumentParser(description = 'Downloads all available NIST Chemistry WebBook spectra of the given type')
     parser.add_argument('dir_out', help = 'directory to save downloaded spectra')
-    parser.add_argument('--crawl-delay', type = float, default = 1.0,
+    parser.add_argument('--crawl-delay', type = float, default = 0.25,
                         help = 'pause between HTTP requests, seconds')
-    parser.add_argument('--timeout', type = float, default = 30.0,
+    parser.add_argument('--timeout', type = float, default = 10.0,
                         help = 'max time to get response, seconds')
     args = parser.parse_args()
     
