@@ -36,7 +36,7 @@ A tabular list of 144795 compounds from the NIST Chemistry WebBook, including th
 
 ### [3D atomic coordinates & QC properties](data/nist_mol3D.zip)
 
-SDF-file containing 3D atomic coordinates for 48325 WebBook compounds along with the following computed properties:
+SDF-file containing 3D atomic coordinates for 54477 WebBook compounds along with the following computed properties:
 
 - `WEBBOOK.ID`: NIST Chemistry WebBook Compound ID;
 
