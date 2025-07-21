@@ -81,6 +81,10 @@ def save_sdf(dir_mol: str, path_sdf: str) -> None:
         if not mol:
             bad.append(f)
     print(f'{len(bad)} bad files detected')
+    for f in bad:
+        name = os.path.basename(f).replace('.mol', '')
+        print(name)
+    print()
     
     # get molfile texts
     fs = [f for f in fs if f not in bad]
