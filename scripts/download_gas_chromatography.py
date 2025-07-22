@@ -158,7 +158,7 @@ def main() -> None:
     
     # download data
     print('\nDownloading GC data ...')
-    #download_gas_chromatography(args.dir_out, args.crawl_delay, args.timeout)
+    download_gas_chromatography(args.dir_out, args.crawl_delay, args.timeout)
     print()
     
     # combine data
