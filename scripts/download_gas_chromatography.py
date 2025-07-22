@@ -4,6 +4,8 @@
 
 import os, sys, argparse
 
+import pandas as pd
+
 from tqdm import tqdm
 
 import nistchempy as nist
@@ -58,6 +60,48 @@ def download_gas_chromatography(dir_out: str, crawl_delay: float = 0.25,
     return
 
 
+def combine_tables(dir_csv: str, path_out: str) -> None:
+    '''Combines downloaded GC data into one CSV file
+    
+    Arguments:
+        dir_csv (str): directory containing GC data as multiple csv-files
+        path_out (str): path to the output CSV-file
+    
+    '''
+    data = []
+    for f in tqdm(os.listdir(dir_csv)):
+        # get basic info
+        ps = f.replace('.csv', '').split('_')
+        addend = {
+            'Compound ID': ps[0],
+            'Retention index type': ps[1],
+            'Column polarity': ps[2],
+            'Temperature regime': ps[3]
+        }
+        # load table
+        path = os.path.join(dir_csv, f)
+        df = pd.read_csv(path)
+        # combine and save
+        rows = [{**addend, **row} for row in df.to_dict('records')]
+        data += rows
+    # prepare dataframe
+    data = pd.DataFrame(data)
+    cols = [
+        'Compound ID', 'Retention index type', 'Column polarity', 'Temperature regime',
+        'Column type', 'Active phase', 'Column length (m)', 'Carrier gas', 'Substrate',
+        'Column diameter (mm)', 'Phase thickness (μm)', 'Temperature (C)',
+        'Tstart (C)', 'Tend (C)', 'Heat rate (K/min)', 'Initial hold (min)', 'Final hold (min)',
+        'Program', 'I', 'Reference', 'Comment'
+    ]
+    data = data[cols]
+    data = data.sort_values(['Compound ID', 'Column polarity', 'Active phase',
+                             'Retention index type', 'Temperature regime'])
+    # save
+    data.to_csv(path_out, index=None)
+    
+    return
+
+
 
 #%% Main functions
 
@@ -69,7 +113,8 @@ def get_arguments() -> argparse.Namespace:
     
     '''
     parser = argparse.ArgumentParser(description = 'Downloads all available NIST Chemistry WebBook spectra of the given type')
-    parser.add_argument('dir_out', help = 'directory to save downloaded spectra')
+    parser.add_argument('dir_out', help = 'directory to save downloaded GC data')
+    parser.add_argument('path_csv', help = 'output file to save combined GC data')
     parser.add_argument('--crawl-delay', type = float, default = 0.25,
                         help = 'pause between HTTP requests, seconds')
     parser.add_argument('--timeout', type = float, default = 10.0,
@@ -91,6 +136,9 @@ def check_arguments(args: argparse.Namespace) -> None:
         os.mkdir(args.dir_out) # FilexExistsError / FileNotFoundError
     if not os.path.isdir(args.dir_out):
         raise ValueError(f'Given dir_out argument is not a directory: {args.dir_out}')
+    # check output csv
+    if not os.path.isdir(os.path.dirname(args.path_csv)):
+        raise ValueError(f'Given path_csv file cannot be created: {args.path_csv}')
     # crawl delay
     if args.crawl_delay < 0:
         raise ValueError(f'--crawl-delay must be positive: {args.crawl_delay}')
@@ -108,9 +156,14 @@ def main() -> None:
     args = get_arguments()
     check_arguments(args)
     
-    # download spectra
+    # download data
     print('\nDownloading GC data ...')
-    download_gas_chromatography(args.dir_out, args.crawl_delay, args.timeout)
+    #download_gas_chromatography(args.dir_out, args.crawl_delay, args.timeout)
+    print()
+    
+    # combine data
+    print('Combining GC data ...')
+    combine_tables(args.dir_out, args.path_csv)
     print()
     
     return
