@@ -51,25 +51,36 @@ SDF-file containing 3D atomic coordinates for 54477 WebBook compounds along with
 - `ROTATIONAL.CONSTANTS`: rotational constants.
 
 
-### [Spectra](data/raw_spectra/)
+### [Spectra](data/spectra/)
 
-1. [Raw spectra](data/raw_spectra/): contains JDX-formatted IR, THz, MS, and UV-Vis spectra. Spectra are organized by type and archived in zip files.
+1. [Raw spectra](data/spectra/raw/): contains JDX-formatted IR, THz, MS, and UV-Vis spectra. Spectra are organized by type and archived in zip files.
 
-    - 19582 [IR spectra](data/raw_spectra/nist_IR.zip) for 15890 compounds;
+    - 19582 [IR spectra](data/spectra/raw/nist_IR.zip) for 15890 compounds;
     
-    - 35 [THz spectra](data/raw_spectra/nist_TZ.zip) for 32 compounds;
+    - 35 [THz spectra](data/spectra/raw/nist_TZ.zip) for 32 compounds;
     
-    - 33285 [MS spectra](data/raw_spectra/nist_MS.zip) for 33285 compounds;
+    - 33285 [MS spectra](data/spectra/raw/nist_MS.zip) for 33285 compounds;
     
-    - 3063 [UV-Vis spectra](data/raw_spectra/nist_UV.zip) for 3057 compounds;
+    - 3063 [UV-Vis spectra](data/spectra/raw/nist_UV.zip) for 3057 compounds;
     
     - File naming convention: {NIST Compound ID}\_{Spectrum Type}\_{Spectrum Index};
     
     - Please note that some spectra (primarily IR) of the same component may appear identical, differing only in resolution (number of points per micrometer).
 
-2. [Processed MS data](data/nist_ms.json): contains information on electron ionization mass spectrometry (MS) spectra, including the following fields:
+2. [Processed MS data](data/spectra/nist_ms.json): contains information on electron ionization mass spectrometry (MS) spectra, including the following fields:
 
-    - `ID` / `name` / `inchi` (str): same as in [nist_compounds.csv](data/nist_compounds.csv);
+    - `ID` / `name` / `inchi` (str): NIST compound ID, compound's name and InChI string;
     
     - `mz` & `intensities` (list\[int\]): lists of m/z values and relative intensities normalized to 9999.
+
+3. [IR spectra info](data/nist_ir_info.csv): contains information on IR spectra, including the following fields:
+
+    - `cID` / `name` / `inchi` (str): NIST compound ID, compound's name and InChI string;
+    
+    - `mp` / `bp` / `state` (str): compound's melting point, boiling points and state in the experiment (`solid`, `liquid`, `solution`, `gas`);
+    
+    - `sID` / `filename` (str): spectrum's ID and filename ([nist_IR.zip](data/spectra/raw/nist_IR.zip));
+    
+    - other columns containing info on spectrum origin.
+
 

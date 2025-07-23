@@ -13,6 +13,71 @@ from tqdm import tqdm
 
 #%% Functions
 
+def process_df(df: pd.core.frame.DataFrame) -> pd.core.frame.DataFrame:
+    '''Processes raw dataframe compiled from IR spectra'''
+    # drop unneeded
+    drop = [
+        'title', 'jcamp-dx', 'data type', 'names', 'molform', '$nist id',
+        'xunits', 'yunits', 'xfactor', 'yfactor', 'deltax', 'firstx', 'lastx', 'end',
+        'firsty', 'maxx', 'minx', 'maxy', 'miny', 'npoints', 'xydata', 'xlabel', 'ylabel',
+        'filename', 'cas name', 'cas registry no',
+        'sampling procedure', 'data processing', 'path length', 'instrument parameters',
+        '$nist doc file', 'instrument resolution', 'ir source',
+        'aperture', 'beamsplitter', 'detector', 'scanner speed',
+        'phase correction', 'interferogram zerofill', 'spectral interval after zerofilling',
+        'spectral range', 'apodization', 'folding limits',
+        'number of interferograms averaged per single channel spectrum',
+        '$spectra version', '$uncertainty in y', 'sample description', 'pressure', 'temperature',
+        '$nist psd file', 'external diffuse reflectance accessory',
+        'detector (dia. det. port in sphere)', 'sphere diameter',
+        'acquisition mode', 'coadded scans', 'phase resolution', 'zerofilling',
+        'spectral resolution', 'wavenumber accuracy', 'apodization function',
+        'low pass filter', 'switch gain on'
+    ]
+    df = df.drop(columns=drop)
+    
+    # rename
+    rename = {
+        'class': 'collection',
+        'source reference': 'source_reference',
+        '$nist source': 'nist_source',
+        '$nist image': 'original_spectrum',
+        'spectrometer/data system': 'spectrometer',
+        'state': 'state_original'
+    }
+    df = df.rename(columns=rename)
+    
+    # process
+    df['state'] = ''
+    df.loc[df['state_original'].isna(), 'state_original'] = ''
+    df.owner = df.owner.str.replace('\n', ' ')
+    
+    # filename
+    df['filename'] = df['cID'] + '_IR_' + df['sID'].astype('str') + '.jdx'
+    
+    # reorder columns
+    cols = ['cID', 'name', 'inchi', 'mp', 'bp', 'sID', 'filename', 'state', 'state_original',
+            'resolution', 'spectrometer', 'original_spectrum',
+            'collection', 'origin', 'owner', 'source_reference', 'nist_source', 'date']
+    df = df[cols]
+    
+    # state
+    x = df['state_original'].apply(lambda x: re.sub(r'([a-zA-Z])\(', r'\1 \(', x)).astype(str).str.lower()
+    state = x.apply(lambda x: x.split()[0] if x else '')
+    state = state.str.strip(';,')
+    subs = [
+        ('vapor', 'gas'), ('(neat)', ''), ('neat', ''), ('thin', 'film'),
+        ('saturated', 'solution'), ('oil', 'solid'), ('ssolid', 'solid'),
+        ('visc.', 'paste'), ('salted', 'solution'), ('melted', 'liquid'),
+        ('10%', 'solution'), ('melt', 'liquid')
+    ]
+    for sub, rep in subs:
+        state.loc[state == sub] = rep
+    df['state'] = state
+    
+    return df
+
+
 def process_ir_spectra(path_zip: str, path_comp: str, path_out: str) -> None:
     '''Extracts meta-info on IR spectra and saves it to csv-file
     
@@ -60,6 +125,7 @@ def process_ir_spectra(path_zip: str, path_comp: str, path_out: str) -> None:
     # save csv
     df = pd.DataFrame(data)
     df = df.sort_values(['cID', 'sID'])
+    df = process_df(df)
     df.to_csv(path_out, index=None)
     
     return
