@@ -96,11 +96,14 @@ def combine_tables(dir_csv: str, path_comp: str, path_out: str) -> None:
     # prepare dataframe
     data = pd.DataFrame(data)
     cols = [
-        'Compound ID', 'Retention index type', 'Column polarity', 'Temperature regime',
-        'Column type', 'Active phase', 'Column length (m)', 'Carrier gas', 'Substrate',
-        'Column diameter (mm)', 'Phase thickness (μm)', 'Temperature (C)',
-        'Tstart (C)', 'Tend (C)', 'Heat rate (K/min)', 'Initial hold (min)', 'Final hold (min)',
-        'Program', 'I', 'Reference', 'Comment'
+        'Compound ID', 'Compound name', 'InChI',
+        'Retention index type', 'Column polarity', 'Active phase', 'Carrier gas',
+        'Temperature regime', 'I',
+        'Temperature (C)', 'Tstart (C)', 'Tend (C)', 'Heat rate (K/min)',
+        'Initial hold (min)', 'Final hold (min)', 'Program',
+        'Column type', 'Column length (m)', 'Column diameter (mm)',
+        'Phase thickness (μm)', 'Substrate',
+        'Reference', 'Comment'
     ]
     data = data[cols]
     data = data.sort_values(['Compound ID', 'Column polarity', 'Active phase',
