@@ -60,20 +60,29 @@ def download_gas_chromatography(dir_out: str, crawl_delay: float = 0.25,
     return
 
 
-def combine_tables(dir_csv: str, path_out: str) -> None:
+def combine_tables(dir_csv: str, path_comp: str, path_out: str) -> None:
     '''Combines downloaded GC data into one CSV file
     
     Arguments:
         dir_csv (str): directory containing GC data as multiple csv-files
+        path_comp (str): path to compounds.csv file
         path_out (str): path to the output CSV-file
     
     '''
+    # inchi info
+    main = pd.read_csv(path_comp, low_memory=False)
+    main = main[['ID', 'name', 'inchi']]
+    main = main.set_index('ID')
+    
+    # combine data
     data = []
     for f in tqdm(os.listdir(dir_csv)):
         # get basic info
         ps = f.replace('.csv', '').split('_')
         addend = {
             'Compound ID': ps[0],
+            'Compound name': main.loc[ps[0], 'name'],
+            'InChI': main.loc[ps[0], 'inchi'],
             'Retention index type': ps[1],
             'Column polarity': ps[2],
             'Temperature regime': ps[3]
@@ -96,6 +105,7 @@ def combine_tables(dir_csv: str, path_out: str) -> None:
     data = data[cols]
     data = data.sort_values(['Compound ID', 'Column polarity', 'Active phase',
                              'Retention index type', 'Temperature regime'])
+    
     # save
     data.to_csv(path_out, index=None)
     
@@ -114,6 +124,7 @@ def get_arguments() -> argparse.Namespace:
     '''
     parser = argparse.ArgumentParser(description = 'Downloads all available NIST Chemistry WebBook spectra of the given type')
     parser.add_argument('dir_out', help = 'directory to save downloaded GC data')
+    parser.add_argument('path_comp', help = 'path to compounds.csv')
     parser.add_argument('path_csv', help = 'output file to save combined GC data')
     parser.add_argument('--crawl-delay', type = float, default = 0.25,
                         help = 'pause between HTTP requests, seconds')
@@ -139,6 +150,9 @@ def check_arguments(args: argparse.Namespace) -> None:
     # check output csv
     if not os.path.isdir(os.path.dirname(args.path_csv)):
         raise ValueError(f'Given path_csv file cannot be created: {args.path_csv}')
+    # check compounds.csv
+    if not os.path.exists(args.path_comp):
+        raise ValueError(f'Given path_comp argument does not exist: {args.path_comp}')
     # crawl delay
     if args.crawl_delay < 0:
         raise ValueError(f'--crawl-delay must be positive: {args.crawl_delay}')
@@ -163,7 +177,7 @@ def main() -> None:
     
     # combine data
     print('Combining GC data ...')
-    combine_tables(args.dir_out, args.path_csv)
+    combine_tables(args.dir_out, args.path_comp, args.path_csv)
     print()
     
     return
