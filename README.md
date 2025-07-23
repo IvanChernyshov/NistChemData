@@ -2,7 +2,7 @@
 
 **NistChemData** is a repository for physico-chemical data extracted from the [NIST Chemistry WebBook](https://webbook.nist.gov/). 
 
-Currently, it includes spectral (IR, THz IR, MS, UV-Vis) and quantum chemical data.
+Currently, it includes spectral (IR, THz IR, MS, UV-Vis) and quantum chemical data (3D atomic coordinates, simulated IR spectra, etc.).
 
 Data extraction was carried out using the [NistChemPy](https://github.com/IvanChernyshov/NistChemPy) package. For more details, please refer to the [scripts/](scripts/) directory.
 
@@ -15,7 +15,7 @@ The scripts used to extract and prepare the data presented in this repository ar
 
 ### [Compounds](data/nist_compounds.csv)
 
-A tabular list of 129345 compounds from the NIST Chemistry WebBook, including the following parameters:
+A tabular list of 144795 compounds from the NIST Chemistry WebBook, including the following parameters:
 
 - `ID` (str): NIST Chemistry WebBook Compound ID;
 
@@ -36,7 +36,7 @@ A tabular list of 129345 compounds from the NIST Chemistry WebBook, including th
 
 ### [3D atomic coordinates & QC properties](data/nist_mol3D.zip)
 
-SDF-file containing 3D atomic coordinates for 48325 WebBook compounds along with the following computed properties:
+SDF-file containing 3D atomic coordinates for 54477 WebBook compounds along with the following computed properties:
 
 - `WEBBOOK.ID`: NIST Chemistry WebBook Compound ID;
 
@@ -51,25 +51,101 @@ SDF-file containing 3D atomic coordinates for 48325 WebBook compounds along with
 - `ROTATIONAL.CONSTANTS`: rotational constants.
 
 
-### [Spectra](data/raw_spectra/)
+### [Spectra](data/spectra/)
 
-1. [Raw spectra](data/raw_spectra/): contains JDX-formatted IR, THz, MS, and UV-Vis spectra. Spectra are organized by type and archived in zip files.
+1. [Raw spectra](data/spectra/raw/): contains JDX-formatted IR, THz, MS, and UV-Vis spectra. Spectra are organized by type and archived in zip files.
 
-    - 19582 [IR spectra](data/raw_spectra/nist_IR.zip) for 15890 compounds;
-    
-    - 35 [THz spectra](data/raw_spectra/nist_TZ.zip) for 32 compounds;
-    
-    - 33285 [MS spectra](data/raw_spectra/nist_MS.zip) for 33285 compounds;
-    
-    - 3063 [UV-Vis spectra](data/raw_spectra/nist_UV.zip) for 3057 compounds;
-    
+    - 19582 [IR spectra](data/spectra/raw/nist_IR.zip) for 15890 compounds;
+
+    - 35 [THz spectra](data/spectra/raw/nist_TZ.zip) for 32 compounds;
+
+    - 33285 [MS spectra](data/spectra/raw/nist_MS.zip) for 33285 compounds;
+
+    - 3063 [UV-Vis spectra](data/spectra/raw/nist_UV.zip) for 3057 compounds;
+
     - File naming convention: {NIST Compound ID}\_{Spectrum Type}\_{Spectrum Index};
-    
+
     - Please note that some spectra (primarily IR) of the same component may appear identical, differing only in resolution (number of points per micrometer).
 
-2. [Processed MS data](data/nist_ms.json): contains information on electron ionization mass spectrometry (MS) spectra, including the following fields:
+2. [Processed MS data](data/spectra/nist_ms.json): contains information on electron ionization mass spectrometry (MS) spectra, including the following fields:
 
-    - `ID` / `name` / `inchi` (str): same as in [nist_compounds.csv](data/nist_compounds.csv);
-    
+    - `ID` / `name` / `inchi` (str): NIST compound ID, compound's name and InChI string;
+
     - `mz` & `intensities` (list\[int\]): lists of m/z values and relative intensities normalized to 9999.
+
+3. [IR spectra info](data/nist_ir_info.csv): contains information on IR spectra, including the following fields:
+
+    - `cID` / `name` / `inchi` (str): NIST compound ID, compound's name and InChI string;
+
+    - `mp` / `bp` / `state` (str): compound's melting point, boiling points and state in the experiment (`solid`, `liquid`, `solution`, `gas`);
+
+    - `sID` / `filename` (str): spectrum's ID and filename ([nist_IR.zip](data/spectra/raw/nist_IR.zip));
+
+    - other columns containing info on spectrum origin.
+
+
+### [Gas chromatography](data/nist_gc.zip)
+
+CSV-file containing 367134 measurements of GC retention indexes for 80042 compounds along with the following properties:
+
+- **Main parameters**:
+
+    - `Compound ID`: NIST Chemistry WebBook Compound ID;
+
+    - `Compound name`: name of the compound;
+
+    - `InChI`: InChI string of the compound;
+
+    - `Retention index type`: Lee's, Kovats, normal alkane, etc.;
+
+    - `Column polarity`: polar / non-polar;
+
+    - `Active phase`: commercial names or chemical composition;
+
+    - `Carrier gas`: mobile phase (H2, He, Ne, etc.);
+
+    - `Temperature regime`: isothermal / temperature ramp / custom;
+
+    - `I`: measured retention index;
+
+- **Details of temperature regime**:
+
+    - Isothermal:
+
+        - `Temperature (C)`: experimental temperature.
+
+    - Temperature ramp:
+
+        - `Tstart (C)`: initial temperature;
+
+        - `Tend (C)`: final temperature;
+
+        - `Heat rate (K/min)`;
+
+        - `Initial hold (min)`;
+
+        - `Final hold (min)`.
+
+    - Custom:
+
+        - `Program`: schematic text description of temperature-time dependence.
+
+- **Experimental setup**:
+
+    - `Column type`: capillary / packed / other;
+
+    - `Column length (m)`;
+
+    - `Column diameter (mm)`;
+
+    - `Phase thickness (μm)`;
+
+    - `Substrate`: substrate material.
+
+- **Service fields**:
+
+    - `Reference`: reference to the source of data;
+
+    - `Comment`: additional info for the data entry.
+
 
