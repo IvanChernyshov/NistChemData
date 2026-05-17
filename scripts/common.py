@@ -115,10 +115,10 @@ def make_request_config(
 def load_webbook_index() -> Any:
     '''Load the current NistChemPy WebBook index.
 
-    This is a temporary compatibility layer. Current NistChemPy versions expose a
-    package-internal index through ``nist.get_all_data()``. After NistChemPy is
-    refactored to a user-local index/cache, this function should be the only
-    place that needs to change in NistChemData.
+    This is a temporary compatibility layer for NistChemPy 1.0.6. That version
+    exposes a package-internal index through ``nist.get_all_data()``. After
+    NistChemPy is refactored to a user-local index/cache, this function should
+    be the only place that needs to change in NistChemData.
 
     Returns:
         Pandas DataFrame returned by ``nist.get_all_data()``.

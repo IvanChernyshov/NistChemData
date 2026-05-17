@@ -20,6 +20,12 @@ Install the core script requirements from:
 pip install -r scripts/requirements.txt
 ```
 
+The requirements intentionally pin `nistchempy==1.0.6`. This version still
+provides the packaged WebBook index used by the current local reconstruction
+scripts. After NistChemPy is changed to use a local user-generated index,
+NistChemData should be updated accordingly rather than silently accepting a new
+major/index API behavior.
+
 Optional RDKit validation for `process_mol3D.py --validate` requires RDKit. If
 pip installation is suitable for your platform, you can install the optional
 requirements from:
@@ -51,7 +57,9 @@ local-data/
   manifests/
 ```
 
-These paths are ignored by Git.
+These paths are ignored by Git. Download scripts write manifests under
+`local-data/manifests/`; processing scripts operate on local inputs and do not
+write manifests by default.
 
 ## Current scripts
 

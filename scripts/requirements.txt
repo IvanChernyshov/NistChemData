@@ -1,9 +1,10 @@
 # Core dependencies for NistChemData local reconstruction scripts.
 #
-# The scripts currently use NistChemPy 1.0.x as the WebBook access/index layer.
-# Keep the upper bound until the planned NistChemPy local-index refactor is
-# reflected in scripts/common.py.
-nistchempy>=1.0.6,<2
+# The scripts currently target NistChemPy 1.0.6 as the WebBook access/index
+# layer because this version still exposes the packaged WebBook index used by
+# scripts/common.py. Do not relax this pin until NistChemPy's planned local-index
+# refactor is reflected in NistChemData.
+nistchempy==1.0.6
 
 # Shared script/runtime dependencies.
 tqdm

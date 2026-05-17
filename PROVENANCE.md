@@ -54,9 +54,10 @@ compound_id,data_type,status,n_files,archive_members,source_url,message
 Optional columns may include retrieval time, script name, or conservative rights
 status labels such as `SRD_DERIVED_REUSE_NOT_CONFIRMED`.
 
-## Future NistChemPy integration
+## NistChemPy integration
 
-Current scripts may use the packaged NistChemPy WebBook index as a temporary
-compatibility layer. After NistChemPy moves this index to a local user-generated
-cache, NistChemData should switch to that cache through a small adapter in
-`scripts/common.py`.
+The current scripts target **NistChemPy 1.0.6** as a temporary compatibility
+layer because that version exposes the packaged WebBook index through
+`nistchempy.get_all_data()`. After NistChemPy moves this index to a local
+user-generated cache, NistChemData should switch to that cache through the
+`load_webbook_index()` adapter in `scripts/common.py`.

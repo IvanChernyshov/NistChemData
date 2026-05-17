@@ -24,10 +24,11 @@ terms, institutional policies, and legal requirements. This repository does not
 grant permission to redistribute generated data files.
 
 NistChemData uses [NistChemPy](https://github.com/IvanChernyshov/NistChemPy) as
-its access and parsing layer. Current scripts may use NistChemPy's packaged
-WebBook index for reproducibility. A later NistChemPy release is expected to move
-that index toward a local user-generated cache; the NistChemData scripts will be
-adjusted accordingly.
+its access and parsing layer. The current scripts target **NistChemPy 1.0.6**
+because that version still exposes the packaged WebBook index used by the local
+reconstruction workflows. After NistChemPy is refactored to build and use a local
+user-generated index, NistChemData should be updated through the adapter in
+`scripts/common.py`.
 
 ## Repository status
 
@@ -69,8 +70,9 @@ The scripts used to reconstruct and process local working files are located in
 [`scripts/`](scripts/). They are provided for local reproducibility and
 provenance inspection.
 
-The scripts should be run only after reviewing the data notice. Future script
-updates will require an explicit acknowledgement flag before generating local
+The scripts should be run only after reviewing the data notice. Download and
+processing commands require `--accept-data-terms` or the
+`NISTCHEMDATA_ACCEPT_DATA_TERMS=1` environment variable before generating local
 WebBook-derived files.
 
 ## Citation and source acknowledgement
