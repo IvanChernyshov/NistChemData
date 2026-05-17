@@ -66,18 +66,36 @@ For a small test run, use `--limit` or `--ids`:
 python scripts/download_spectra.py IR --limit 5 --accept-data-terms
 ```
 
+### `process_ms_spectra.py`
+
+`process_ms_spectra.py` converts a local raw MS JDX archive into a local JSONL
+peak-list file by default. By default, it processes one spectrum per compound,
+preserving the previous record shape as one JSON object per line. Use
+`--spectrum-policy all` if you want every MS JDX member represented in the
+output. Since processing uses a local archive, it does not write a manifest;
+parsing errors abort the run with the failing archive member name. A JSON array
+can still be written with `--format json` or a `.json` output suffix.
+
+Example:
+
+```bash
+python scripts/process_ms_spectra.py \
+  local-data/raw/spectra/nist_MS.zip \
+  local-data/processed/nist_ms.jsonl \
+  --accept-data-terms
+```
+
 ### Remaining scripts
 
 The remaining scripts are still being migrated from the earlier data-repository
 workflow to the local reconstruction workflow:
 
-- `process_ms_spectra.py` converts a local raw MS JDX archive into a local JSON
-  peak-list file.
 - `process_ir_spectra.py` extracts metadata from a local raw IR JDX archive.
 - `download_mol3D.py` downloads local 3D MOL files and can assemble a local SDF
   archive.
 - `download_gas_chromatography.py` downloads local gas-chromatography retention
   index tables and can assemble a local combined table.
 
-Future updates will migrate these scripts to the same explicit local-output,
-manifest, and data-scope acknowledgement pattern.
+Future updates will migrate download scripts to the same explicit local-output,
+manifest, and data-scope acknowledgement pattern. Processing scripts will use
+plain success/failure behavior because they operate on local inputs.

@@ -25,7 +25,7 @@ user's machine.
 | `local-data/raw/spectra/nist_TZ.zip` | `scripts/download_spectra.py TZ` | WebBook THz IR section / JDX downloads | Generated locally, not committed |
 | `local-data/raw/spectra/nist_MS.zip` | `scripts/download_spectra.py MS` | WebBook electron-ionization MS section / JDX downloads | Generated locally, not committed |
 | `local-data/raw/spectra/nist_UV.zip` | `scripts/download_spectra.py UV` | WebBook UV/Visible section / JDX downloads | Generated locally, not committed |
-| `local-data/processed/nist_ms.json` | `scripts/process_ms_spectra.py` | Derived from local `nist_MS.zip` | Generated locally, not committed |
+| `local-data/processed/nist_ms.jsonl` | `scripts/process_ms_spectra.py` | Derived from local `nist_MS.zip`; JSON output is also supported | Generated locally, not committed |
 | `local-data/processed/nist_ir_info.csv` | `scripts/process_ir_spectra.py` | Derived from local `nist_IR.zip` JDX headers | Generated locally, not committed |
 | `local-data/raw/mol3d/nist_mol3D_raw_mol.zip` | `scripts/download_mol3D.py` | WebBook 3D MOL/SDF links | Generated locally, not committed |
 | `local-data/processed/nist_mol3D.sdf` | `scripts/download_mol3D.py` | Derived from local raw MOL archive | Generated locally, not committed |

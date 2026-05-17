@@ -56,7 +56,7 @@ Historically documented local artifacts include:
 | `data/spectra/raw/nist_TZ.zip` | Raw THz JDX spectra archive | Not redistributed |
 | `data/spectra/raw/nist_MS.zip` | Raw electron-ionization MS JDX spectra archive | Not redistributed |
 | `data/spectra/raw/nist_UV.zip` | Raw UV/Visible JDX spectra archive | Not redistributed |
-| `data/spectra/nist_ms.json` | Processed MS peak-list JSON derived from raw MS files | Not redistributed |
+| `data/spectra/nist_ms.json` | Historical processed MS peak-list JSON derived from raw MS files | Not redistributed |
 | `data/nist_ir_info.csv` | IR metadata table derived from raw IR JDX headers | Not redistributed |
 | `data/nist_gc.zip` | Gas-chromatography retention-index table archive | Not redistributed |
 
