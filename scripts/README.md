@@ -122,16 +122,59 @@ For a small test run, use `--limit` or `--ids`:
 python scripts/process_ir_spectra.py --limit 10 --accept-data-terms
 ```
 
+### `download_mol3D.py`
+
+`download_mol3D.py` downloads available WebBook 3D structure records into a
+local raw MOL ZIP archive. The ZIP members use the legacy-compatible root-level
+name pattern `{ID}.mol`. Resume behavior uses both the manifest and existing
+non-empty MOL archive members, so older local raw archives can be reused without
+re-downloading records.
+
+Example:
+
+```bash
+python scripts/download_mol3D.py \
+  --out local-data/raw/nist_mol3D_raw.zip \
+  --manifest local-data/manifests/nist_mol3D_manifest.csv \
+  --crawl-delay 1.0 \
+  --timeout 30 \
+  --max-attempts 3 \
+  --accept-data-terms
+```
+
+For a small test run, use `--limit` or `--ids`:
+
+```bash
+python scripts/download_mol3D.py --limit 5 --accept-data-terms
+```
+
+### `process_mol3D.py`
+
+`process_mol3D.py` assembles a local raw MOL ZIP archive into a single local SDF
+file. It preserves the downloaded records as text and does not rewrite
+structures through RDKit by default. Optional RDKit validation is available with
+`--validate`. Since processing uses a local archive, it does not write a
+manifest; parsing or validation errors abort the run with the failing member
+name.
+
+Example:
+
+```bash
+python scripts/process_mol3D.py \
+  local-data/raw/nist_mol3D_raw.zip \
+  local-data/processed/nist_mol3D.sdf \
+  --zip-output local-data/processed/nist_mol3D.zip \
+  --accept-data-terms
+```
+
 ### Remaining scripts
 
-The remaining download scripts are still being migrated from the earlier
+The remaining download script is still being migrated from the earlier
 data-repository workflow to the local reconstruction workflow:
 
-- `download_mol3D.py` downloads local 3D MOL files and can assemble a local SDF
-  archive.
 - `download_gas_chromatography.py` downloads local gas-chromatography retention
   index tables and can assemble a local combined table.
 
-Future updates will migrate download scripts to the same explicit local-output,
+Future updates will migrate this script to the same explicit local-output,
 manifest, and data-scope acknowledgement pattern. Processing scripts use plain
 success/failure behavior because they operate on local inputs.

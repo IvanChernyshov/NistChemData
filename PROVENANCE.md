@@ -29,9 +29,9 @@ user's machine.
 | `local-data/raw/spectra/nist_UV.zip` | `scripts/download_spectra.py UV` | WebBook UV/Visible section / JDX downloads | Generated locally, not committed |
 | `local-data/processed/nist_ms.jsonl` | `scripts/process_ms_spectra.py` | Derived from local `nist_MS.zip`; JSON output is also supported | Generated locally, not committed |
 | `local-data/processed/nist_ir_info.csv` | `scripts/process_ir_spectra.py` | Derived from local `nist_IR.zip` JDX headers | Generated locally, not committed |
-| `local-data/raw/mol3d/nist_mol3D_raw_mol.zip` | `scripts/download_mol3D.py` | WebBook 3D MOL/SDF links | Generated locally, not committed |
-| `local-data/processed/nist_mol3D.sdf` | `scripts/download_mol3D.py` | Derived from local raw MOL archive | Generated locally, not committed |
-| `local-data/processed/nist_mol3D.zip` | `scripts/download_mol3D.py` | Archive of generated local SDF | Generated locally, not committed |
+| `local-data/raw/nist_mol3D_raw.zip` | `scripts/download_mol3D.py` | WebBook 3D MOL/SDF links | Generated locally, not committed |
+| `local-data/processed/nist_mol3D.sdf` | `scripts/process_mol3D.py` | Derived from local raw MOL archive | Generated locally, not committed |
+| `local-data/processed/nist_mol3D.zip` | `scripts/process_mol3D.py` | Archive of generated local SDF | Generated locally, not committed |
 | `local-data/raw/gc/nist_gc_parts.zip` | `scripts/download_gas_chromatography.py` | WebBook gas-chromatography retention-index pages | Generated locally, not committed |
 | `local-data/processed/nist_gc.csv` | `scripts/download_gas_chromatography.py` | Combined table derived from local GC part files | Generated locally, not committed |
 | `local-data/processed/nist_gc.zip` | `scripts/download_gas_chromatography.py` | Archive of generated local GC table | Generated locally, not committed |

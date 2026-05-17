@@ -401,6 +401,45 @@ def spectrum_archive_members_by_compound(
     return grouped
 
 
+def mol_archive_members_by_compound(
+    path_zip: str | Path,
+    require_nonempty: bool = True,
+) -> dict[str, dict[str, str]]:
+    '''Group existing 3D MOL ZIP members by compound ID.
+
+    The returned nested mapping has this form::
+
+        {compound_id: {canonical_basename: actual_archive_member}}
+
+    For example, an existing legacy member ``mol3d/C71432.mol`` is returned as
+    ``{'C71432': {'C71432.mol': 'mol3d/C71432.mol'}}``. This lets local raw
+    MOL archives be reused even if files were stored under a top-level folder.
+
+    Args:
+        path_zip: Path to the ZIP archive.
+        require_nonempty: If true, zero-size members are ignored.
+
+    Returns:
+        Mapping from compound ID to existing archive members.
+
+    '''
+    pattern = re.compile(r'^(?P<compound_id>.+)\.mol$', flags=re.IGNORECASE)
+
+    grouped: dict[str, dict[str, str]] = {}
+    for basename, member in archive_members_by_basename(
+        path_zip, require_nonempty=require_nonempty
+    ).items():
+        match = pattern.match(basename)
+        if match is None:
+            continue
+
+        compound_id = match.group('compound_id')
+        canonical = f'{compound_id}.mol'
+        grouped.setdefault(compound_id, {})[canonical] = member
+
+    return grouped
+
+
 def zip_writestr_if_missing(
     path_zip: str | Path,
     member_name: str,
