@@ -26,7 +26,7 @@ or commercially reuse generated WebBook-derived data files.
 
 ## User responsibility
 
-The scripts are provided for local reproducibility and provenance inspection.
+The scripts are provided for local reproducibility and source tracking.
 Users are responsible for reviewing and complying with applicable NIST Chemistry
 WebBook / SRD 69 terms, source-collection terms, institutional policies, and
 legal requirements.
@@ -38,7 +38,7 @@ This notice is not legal advice.
 The public repository should contain only:
 
 - original scripts and documentation;
-- provenance notes;
+- data-scope notes and local reconstruction documentation;
 - small non-substantive examples or fixtures if needed for tests;
 - placeholder files explaining where generated local data would be written.
 

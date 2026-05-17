@@ -3,7 +3,7 @@
 This directory contains scripts for reconstructing selected local working files
 from the NIST Chemistry WebBook / SRD 69 using NistChemPy.
 
-The scripts are provided for local reproducibility and provenance inspection.
+The scripts are provided for local reproducibility and source tracking.
 Generated files may be derived from NIST Standard Reference Data and/or
 source-literature-origin collections exposed through WebBook records. Generated
 files are not covered by the repository MIT license and should not be committed
