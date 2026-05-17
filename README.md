@@ -1,151 +1,81 @@
-# NistChemData: Extracted Physico-Chemical Data from NIST Chemistry WebBook
-
-**NistChemData** is a repository for physico-chemical data extracted from the [NIST Chemistry WebBook](https://webbook.nist.gov/). 
-
-Currently, it includes spectral (IR, THz IR, MS, UV-Vis) and quantum chemical data (3D atomic coordinates, simulated IR spectra, etc.).
-
-Data extraction was carried out using the [NistChemPy](https://github.com/IvanChernyshov/NistChemPy) package. For more details, please refer to the [scripts/](scripts/) directory.
-
-As **NistChemPy** continues to evolve and enhance its extraction capabilities, we will incorporate additional thermodynamic and spectral data into this repository.
-
-The scripts used to extract and prepare the data presented in this repository are located in the [scripts/](scripts/) folder.
-
-
-## Data Cookbook
-
-### [Compounds](data/nist_compounds.csv)
-
-A tabular list of 144795 compounds from the NIST Chemistry WebBook, including the following parameters:
-
-- `ID` (str): NIST Chemistry WebBook Compound ID;
-
-- `name` (str): chemical name;
-
-- `synonyms` (str): alternative chemical names, separated by "\n";
-
-- `formula` (str): chemical formula;
-
-- `cas_rn` (str): CAS Registry Number;
-
-- `mol_weight` (float): molar weight, g/mol;
-
-- `inchi` (str): InChI string;
-
-- `inchi_key` (str): InChI Key string.
-
-
-### [3D atomic coordinates & QC properties](data/nist_mol3D.zip)
-
-SDF-file containing 3D atomic coordinates for 54477 WebBook compounds along with the following computed properties:
-
-- `WEBBOOK.ID`: NIST Chemistry WebBook Compound ID;
-
-- `METHOD`: quantum chemical approximation used for the computations;
-
-- `DIPOLE.MOMENT`: dipole moment;
-
-- `ELECTRONIC.ENERGY`: absolute electronic energy;
-
-- `IR.FREQUENCIES`: computed frequencies and their IR intensities;
-
-- `ROTATIONAL.CONSTANTS`: rotational constants.
-
-
-### [Spectra](data/spectra/)
-
-1. [Raw spectra](data/spectra/raw/): contains JDX-formatted IR, THz, MS, and UV-Vis spectra. Spectra are organized by type and archived in zip files.
-
-    - 19582 [IR spectra](data/spectra/raw/nist_IR.zip) for 15890 compounds;
-
-    - 35 [THz spectra](data/spectra/raw/nist_TZ.zip) for 32 compounds;
-
-    - 33285 [MS spectra](data/spectra/raw/nist_MS.zip) for 33285 compounds;
-
-    - 3063 [UV-Vis spectra](data/spectra/raw/nist_UV.zip) for 3057 compounds;
-
-    - File naming convention: {NIST Compound ID}\_{Spectrum Type}\_{Spectrum Index};
-
-    - Please note that some spectra (primarily IR) of the same component may appear identical, differing only in resolution (number of points per micrometer).
-
-2. [Processed MS data](data/spectra/nist_ms.json): contains information on electron ionization mass spectrometry (MS) spectra, including the following fields:
-
-    - `ID` / `name` / `inchi` (str): NIST compound ID, compound's name and InChI string;
-
-    - `mz` & `intensities` (list\[int\]): lists of m/z values and relative intensities normalized to 9999.
-
-3. [IR spectra info](data/nist_ir_info.csv): contains information on IR spectra, including the following fields:
-
-    - `cID` / `name` / `inchi` (str): NIST compound ID, compound's name and InChI string;
-
-    - `mp` / `bp` / `state` (str): compound's melting point, boiling points and state in the experiment (`solid`, `liquid`, `solution`, `gas`);
-
-    - `sID` / `filename` (str): spectrum's ID and filename ([nist_IR.zip](data/spectra/raw/nist_IR.zip));
-
-    - other columns containing info on spectrum origin.
-
-
-### [Gas chromatography](data/nist_gc.zip)
-
-CSV-file containing 367134 measurements of GC retention indexes for 80042 compounds along with the following properties:
-
-- **Main parameters**:
-
-    - `Compound ID`: NIST Chemistry WebBook Compound ID;
-
-    - `Compound name`: name of the compound;
-
-    - `InChI`: InChI string of the compound;
-
-    - `Retention index type`: Lee's, Kovats, normal alkane, etc.;
-
-    - `Column polarity`: polar / non-polar;
-
-    - `Active phase`: commercial names or chemical composition;
-
-    - `Carrier gas`: mobile phase (H2, He, Ne, etc.);
-
-    - `Temperature regime`: isothermal / temperature ramp / custom;
-
-    - `I`: measured retention index;
-
-- **Details of temperature regime**:
-
-    - Isothermal:
-
-        - `Temperature (C)`: experimental temperature.
-
-    - Temperature ramp:
-
-        - `Tstart (C)`: initial temperature;
-
-        - `Tend (C)`: final temperature;
-
-        - `Heat rate (K/min)`;
-
-        - `Initial hold (min)`;
-
-        - `Final hold (min)`.
-
-    - Custom:
-
-        - `Program`: schematic text description of temperature-time dependence.
-
-- **Experimental setup**:
-
-    - `Column type`: capillary / packed / other;
-
-    - `Column length (m)`;
-
-    - `Column diameter (mm)`;
-
-    - `Phase thickness (μm)`;
-
-    - `Substrate`: substrate material.
-
-- **Service fields**:
-
-    - `Reference`: reference to the source of data;
-
-    - `Comment`: additional info for the data entry.
-
-
+# NistChemData
+
+**NistChemData** is a historical companion repository for scripts and provenance
+notes related to local reconstruction of selected working files from the
+[NIST Chemistry WebBook](https://webbook.nist.gov/) / SRD 69.
+
+The cleaned public repository does **not** redistribute extracted WebBook-derived
+data files. Earlier versions of the project documented local working artifacts
+such as compound tables, 3D structure files, raw spectra archives, processed mass
+spectra, IR metadata, and gas-chromatography retention-index tables. These files
+are not included in the cleaned repository and are not covered by the repository
+MIT license.
+
+The repository now contains:
+
+- scripts for local reconstruction of selected working files;
+- documentation of expected local artifact formats;
+- provenance and data-scope notes;
+- placeholders for generated data directories.
+
+Generated files are local user artifacts. Users are responsible for complying
+with the applicable NIST Chemistry WebBook / SRD 69 terms, source-collection
+terms, institutional policies, and legal requirements. This repository does not
+grant permission to redistribute generated data files.
+
+NistChemData uses [NistChemPy](https://github.com/IvanChernyshov/NistChemPy) as
+its access and parsing layer. Current scripts may use NistChemPy's packaged
+WebBook index for reproducibility. A later NistChemPy release is expected to move
+that index toward a local user-generated cache; the NistChemData scripts will be
+adjusted accordingly.
+
+## Repository status
+
+This repository should be treated as a **scripts and provenance repository**, not
+as an official, complete, current, or independently licensed redistribution of
+NIST Chemistry WebBook data.
+
+The MIT license applies only to original code, scripts, and documentation in this
+repository. It does not apply to files generated by the scripts from NIST
+Chemistry WebBook / SRD 69 or from third-party/source-literature-origin
+collections exposed through WebBook records. See [DATA_NOTICE.md](DATA_NOTICE.md)
+for details.
+
+## Local artifacts
+
+The scripts can reconstruct local working files under ignored directories such
+as `local-data/`. These files are intentionally not committed to the repository.
+
+Historically documented local artifacts include:
+
+| Local artifact | Description | Public repository status |
+|---|---|---|
+| `data/nist_compounds.csv` | WebBook-derived compound/index table | Not redistributed |
+| `data/nist_mol3D.zip` | 3D structure / computed-property SDF archive | Not redistributed |
+| `data/spectra/raw/nist_IR.zip` | Raw IR JDX spectra archive | Not redistributed |
+| `data/spectra/raw/nist_TZ.zip` | Raw THz JDX spectra archive | Not redistributed |
+| `data/spectra/raw/nist_MS.zip` | Raw electron-ionization MS JDX spectra archive | Not redistributed |
+| `data/spectra/raw/nist_UV.zip` | Raw UV/Visible JDX spectra archive | Not redistributed |
+| `data/spectra/nist_ms.json` | Processed MS peak-list JSON derived from raw MS files | Not redistributed |
+| `data/nist_ir_info.csv` | IR metadata table derived from raw IR JDX headers | Not redistributed |
+| `data/nist_gc.zip` | Gas-chromatography retention-index table archive | Not redistributed |
+
+See [PROVENANCE.md](PROVENANCE.md) for the planned local reconstruction and
+provenance model.
+
+## Scripts
+
+The scripts used to reconstruct and process local working files are located in
+[`scripts/`](scripts/). They are provided for local reproducibility and
+provenance inspection.
+
+The scripts should be run only after reviewing the data notice. Future script
+updates will require an explicit acknowledgement flag before generating local
+WebBook-derived files.
+
+## Citation and source acknowledgement
+
+When using locally generated files, cite the relevant NIST Chemistry WebBook /
+SRD 69 source and the underlying WebBook data collection or reference where
+applicable. This repository does not replace the official WebBook citation
+requirements or source-specific provenance.

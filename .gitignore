@@ -130,3 +130,15 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# NistChemData generated local artifacts
+/local-data/
+/generated/
+/cache/
+/downloads/
+/data/*
+!/data/README.md
+*.jdx
+*.mol
+*.sdf
+*.zip

@@ -1,20 +1,57 @@
 # NistChemData scripts
 
-The directory contains scripts used to extract and prepare the NIST Chemistry WebBook data presented in this repository.
+This directory contains scripts for reconstructing selected local working files
+from the NIST Chemistry WebBook / SRD 69 using NistChemPy.
 
+The scripts are provided for local reproducibility and provenance inspection.
+Generated files may be derived from NIST Standard Reference Data and/or
+source-literature-origin collections exposed through WebBook records. Generated
+files are not covered by the repository MIT license and should not be committed
+to this repository.
+
+Read the repository-level [DATA_NOTICE.md](../DATA_NOTICE.md) before running the
+scripts.
 
 ## Requirements
 
-All requirements are listed in [requirements.txt](requirements.txt).
+Install the script requirements from:
 
-**tqdm** is the only addition to **NistChemPy** and its dependences.
+```bash
+pip install -r scripts/requirements.txt
+```
 
+Some workflows may require additional optional dependencies. For example, the
+3D-structure workflow may use RDKit for validation.
 
-## Scripts
+## Local output layout
 
-1. [download_spectra.py](download_spectra.py): downloads raw IR, TZ, MS, and UV spectra ([raw spectra](../data/raw_spectra/)). List of WebBook compounds is prepared using pre-saved data of the **NistChemPy** package.
+The cleaned repository does not include generated data. Recommended local output
+paths are:
 
-2. [process_ms_spectra.py](process_ms_spectra.py): transforms raw MS spectra to the ready-to-go JSON-format ([nist_ms.json](../data/nist_ms.json)).
+```text
+local-data/
+  raw/
+    spectra/
+    mol3d/
+    gc/
+  processed/
+  manifests/
+```
 
-3. [download_mol3D.py](download_mol3D.py): downloads 3D MOL-files and transforms them into single SDF-file ([nist_mol3D.sdf](../data/nist_mol3D.zip)).
+These paths are ignored by Git.
 
+## Current scripts
+
+- `download_spectra.py` downloads local raw JDX archives for IR, THz IR, mass,
+  and UV/Visible spectra.
+- `process_ms_spectra.py` converts a local raw MS JDX archive into a local JSON
+  peak-list file.
+- `process_ir_spectra.py` extracts metadata from a local raw IR JDX archive.
+- `download_mol3D.py` downloads local 3D MOL files and can assemble a local SDF
+  archive.
+- `download_gas_chromatography.py` downloads local gas-chromatography retention
+  index tables and can assemble a local combined table.
+
+The current implementations are being migrated from the earlier data-repository
+workflow to a local reconstruction workflow. Future updates will add explicit
+local archive outputs, manifests, and data-scope acknowledgement flags.
