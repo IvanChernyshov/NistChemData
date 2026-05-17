@@ -1,196 +1,384 @@
-'''Downloads NIST Chemistry WebBook data on gas chromatography'''
+'''Download local NIST Chemistry WebBook gas-chromatography parts.'''
 
-#%% Imports
+from __future__ import annotations
 
-import os, sys, argparse
+import argparse
+import zipfile
+from pathlib import Path
 
-import pandas as pd
-
+from nistchempy.parsing import (
+    get_chromatography_table_refs,
+    parse_chromatography_table,
+)
 from tqdm import tqdm
 
-import nistchempy as nist
+from common import (
+    MANIFEST_COLUMNS,
+    RIGHTS_STATUS,
+    SOURCE_DATABASE,
+    append_manifest_row,
+    completed_ids_from_manifest,
+    ensure_parent,
+    filter_index_rows,
+    format_archive_members,
+    gc_archive_members_by_compound,
+    get_search_column,
+    legacy_gc_member_name,
+    load_webbook_index,
+    make_request_config,
+    request_nist,
+    require_data_terms_acknowledgement,
+    split_id_argument,
+    utc_now,
+)
 
 
-#%% Functions
+DEFAULT_OUTPUT = 'local-data/raw/nist_gc_parts.zip'
+DEFAULT_MANIFEST = 'local-data/manifests/nist_gc_manifest.csv'
+DATA_TYPE = 'gas_chromatography'
+SEARCH_KEY = 'cGC'
 
-def download_gas_chromatography(dir_out: str, crawl_delay: float = 0.25,
-                                timeout: float = 10.0) -> None:
-    '''Downloads NIST Chemistry WebBook data on gas chromatography
-    
-    Arguments:
-        dir_out (str): output directory for csv-files
-        crawl_delay (float): interval between series of requests for different compounds, seconds
-        timeout (float): max time to get response, seconds
-    
+
+def fetch_gc_table_urls(source_url: str, config) -> list[str]:
+    '''Fetch a WebBook GC section page and return large-table URLs.
+
+    Args:
+        source_url: WebBook gas-chromatography section URL.
+        config: NistChemPy request configuration.
+
+    Returns:
+        List of large-format GC table URLs.
+
+    Raises:
+        RuntimeError: If the section page cannot be loaded.
+
     '''
-    # get IDs to download
-    df = nist.get_all_data()
-    key = nist.get_search_parameters()['cGC']
-    IDs = sorted(list(df.loc[~df[key].isna(), 'ID'].values))
-    
-    # filter already downloaded
-    loaded = sorted(list(set([f.split('_')[0] for f in os.listdir(dir_out)])))
-    loaded = set(loaded[:-1]) # reload the last one
-    IDs = [ID for ID in IDs if ID not in loaded]
-    
-    # requests config
-    cfg = nist.RequestConfig(delay=crawl_delay, kwargs={'timeout': timeout})
-    
-    # start downloading
-    for ID in tqdm(IDs):
+    response = request_nist(source_url, config=config)
+    if not response.ok:
+        status = getattr(response.response, 'status_code', 'unknown')
+        raise RuntimeError(f'failed to load GC page, HTTP status {status}')
+    if response.soup is None:
+        raise RuntimeError('GC page response is not HTML')
+
+    return get_chromatography_table_refs(response.soup)
+
+
+def fetch_gc_table(table_url: str, config) -> dict:
+    '''Fetch and parse one large-format GC table.
+
+    Args:
+        table_url: WebBook large-format GC table URL.
+        config: NistChemPy request configuration.
+
+    Returns:
+        Dictionary returned by NistChemPy's GC table parser.
+
+    Raises:
+        RuntimeError: If the table page cannot be loaded or parsed.
+
+    '''
+    response = request_nist(table_url, config=config)
+    if not response.ok:
+        status = getattr(response.response, 'status_code', 'unknown')
+        raise RuntimeError(f'failed to load GC table, HTTP status {status}')
+    if response.soup is None:
+        raise RuntimeError('GC table response is not HTML')
+
+    return parse_chromatography_table(response.soup)
+
+
+def table_to_csv(info: dict) -> str:
+    '''Convert parsed GC table info to CSV text.
+
+    Args:
+        info: Parsed GC table info containing a pandas DataFrame under ``data``.
+
+    Returns:
+        CSV text without an index column.
+
+    '''
+    return info['data'].to_csv(index=False)
+
+
+def write_manifest(
+    path_manifest: str | Path,
+    compound_id: str,
+    status: str,
+    n_files: int,
+    archive_members: list[str],
+    source_url: str,
+    message: str = '',
+) -> None:
+    '''Append one GC-download row to the manifest.'''
+    append_manifest_row(
+        path_manifest,
+        {
+            'retrieved_at': utc_now(),
+            'compound_id': compound_id,
+            'data_type': DATA_TYPE,
+            'status': status,
+            'n_files': n_files,
+            'archive_members': format_archive_members(archive_members),
+            'source_url': source_url,
+            'source_database': SOURCE_DATABASE,
+            'rights_status': RIGHTS_STATUS,
+            'message': message,
+        },
+        columns=MANIFEST_COLUMNS,
+    )
+
+
+def download_gas_chromatography(
+    path_out: str | Path,
+    path_manifest: str | Path,
+    crawl_delay: float = 1.0,
+    timeout: float = 30.0,
+    max_attempts: int = 3,
+    ids: list[str] | None = None,
+    limit: int | None = None,
+    rerun_completed: bool = False,
+    verify_existing_archive: bool = False,
+) -> None:
+    '''Download available GC tables into a local raw parts ZIP archive.
+
+    Args:
+        path_out: Output raw GC parts ZIP archive path.
+        path_manifest: CSV manifest path.
+        crawl_delay: Delay after HTTP requests, in seconds.
+        timeout: Per-request timeout, in seconds.
+        max_attempts: Maximum number of request attempts.
+        ids: Optional ordered list of compound IDs to process.
+        limit: Optional maximum number of index rows to process.
+        rerun_completed: Legacy alias for ``verify_existing_archive``. If true,
+            source pages are checked even for compounds with completed manifest
+            rows or existing archive members.
+        verify_existing_archive: If true, check source pages for all selected
+            compounds and download only missing GC table parts. If false, a
+            compound with non-empty existing GC CSV members is treated as
+            complete and skipped.
+
+    '''
+    config = make_request_config(crawl_delay, timeout, max_attempts)
+    df = load_webbook_index()
+    column = get_search_column(SEARCH_KEY)
+    rows = filter_index_rows(df, column, ids=ids, limit=limit)
+
+    path_out = Path(path_out)
+    path_manifest = Path(path_manifest)
+    ensure_parent(path_out)
+    ensure_parent(path_manifest)
+
+    try:
+        archive_state = gc_archive_members_by_compound(
+            path_out, require_nonempty=True
+        )
+    except zipfile.BadZipFile as exc:
+        raise RuntimeError(f'Invalid ZIP archive: {path_out}') from exc
+
+    verify_archive = verify_existing_archive or rerun_completed
+
+    completed_ids = set()
+    if not verify_archive:
+        completed_ids = completed_ids_from_manifest(
+            path_manifest,
+            data_type=DATA_TYPE,
+            path_archive=path_out,
+            require_archive_members=True,
+        )
+        # Existing non-empty GC CSV members are also valid resume state. This
+        # lets old loose GC files be repacked into a ZIP and reused without a
+        # manifest. Use --verify-existing-archive to scan source pages and
+        # repair potentially missing table parts.
+        completed_ids.update(archive_state)
+
+    for _, row in tqdm(rows.iterrows(), total=len(rows)):
+        compound_id = str(row['ID'])
+        source_url = str(row[column])
+
+        if compound_id in completed_ids:
+            continue
+
+        archive_members = []
+        existing_for_compound = archive_state.setdefault(compound_id, {})
+
         try:
-            # load compound
-            X = nist.get_compound(ID, cfg)
-            if not X:
-                tqdm.write(f'Can not load the compound: {ID}')
-                pass
-            # load spectra
-            X.get_gas_chromatography()
-            if not X.gas_chromat:
-                tqdm.write(f'No chromatograms were downloaded for the compound: {ID}')
+            table_urls = fetch_gc_table_urls(source_url, config)
+            if not table_urls:
+                tqdm.write(f'No GC table URLs found for {compound_id}')
+                write_manifest(
+                    path_manifest,
+                    compound_id,
+                    'no_data',
+                    0,
+                    [],
+                    source_url,
+                    'no large-format GC table URLs found on source page',
+                )
                 continue
-            # save spectra
-            X.save_gas_chromatography(dir_out, index=None)
+
+            with zipfile.ZipFile(
+                path_out, 'a', compression=zipfile.ZIP_DEFLATED
+            ) as zipf:
+                for table_url in table_urls:
+                    info = fetch_gc_table(table_url, config)
+                    member_name = legacy_gc_member_name(
+                        compound_id,
+                        info['ri_type'],
+                        info['column_type'],
+                        info['temp_regime'],
+                    )
+                    existing_member = existing_for_compound.get(member_name)
+                    if existing_member is not None:
+                        archive_members.append(existing_member)
+                        continue
+
+                    csv_text = table_to_csv(info)
+                    zipf.writestr(member_name, csv_text)
+                    existing_for_compound[member_name] = member_name
+                    archive_members.append(member_name)
+
+            write_manifest(
+                path_manifest,
+                compound_id,
+                'done',
+                len(archive_members),
+                archive_members,
+                source_url,
+            )
         except (KeyboardInterrupt, SystemExit):
             tqdm.write('The code execution was interrupted')
-            sys.exit()
-        except:
-            tqdm.write(f'Error while processing compound # {ID}')
-    
-    return
+            raise
+        except Exception as exc:
+            tqdm.write(f'Error while processing compound {compound_id}: {exc}')
+            write_manifest(
+                path_manifest,
+                compound_id,
+                'error',
+                len(archive_members),
+                archive_members,
+                source_url,
+                str(exc),
+            )
 
-
-def combine_tables(dir_csv: str, path_comp: str, path_out: str) -> None:
-    '''Combines downloaded GC data into one CSV file
-    
-    Arguments:
-        dir_csv (str): directory containing GC data as multiple csv-files
-        path_comp (str): path to compounds.csv file
-        path_out (str): path to the output CSV-file
-    
-    '''
-    # inchi info
-    main = pd.read_csv(path_comp, low_memory=False)
-    main = main[['ID', 'name', 'inchi']]
-    main = main.set_index('ID')
-    
-    # combine data
-    data = []
-    for f in tqdm(os.listdir(dir_csv)):
-        # get basic info
-        ps = f.replace('.csv', '').split('_')
-        addend = {
-            'Compound ID': ps[0],
-            'Compound name': main.loc[ps[0], 'name'],
-            'InChI': main.loc[ps[0], 'inchi'],
-            'Retention index type': ps[1],
-            'Column polarity': ps[2],
-            'Temperature regime': ps[3]
-        }
-        # load table
-        path = os.path.join(dir_csv, f)
-        df = pd.read_csv(path)
-        # combine and save
-        rows = [{**addend, **row} for row in df.to_dict('records')]
-        data += rows
-    # prepare dataframe
-    data = pd.DataFrame(data)
-    cols = [
-        'Compound ID', 'Compound name', 'InChI',
-        'Retention index type', 'Column polarity', 'Active phase', 'Carrier gas',
-        'Temperature regime', 'I',
-        'Temperature (C)', 'Tstart (C)', 'Tend (C)', 'Heat rate (K/min)',
-        'Initial hold (min)', 'Final hold (min)', 'Program',
-        'Column type', 'Column length (m)', 'Column diameter (mm)',
-        'Phase thickness (μm)', 'Substrate',
-        'Reference', 'Comment'
-    ]
-    data = data[cols]
-    data = data.sort_values(['Compound ID', 'Column polarity', 'Active phase',
-                             'Retention index type', 'Temperature regime'])
-    
-    # save
-    data.to_csv(path_out, index=None)
-    
-    return
-
-
-
-#%% Main functions
 
 def get_arguments() -> argparse.Namespace:
-    '''CLI wrapper
-    
+    '''Parse command-line arguments.
+
     Returns:
-        argparse.Namespace: CLI arguments
-    
+        Parsed CLI arguments.
+
     '''
-    parser = argparse.ArgumentParser(description = 'Downloads all available NIST Chemistry WebBook spectra of the given type')
-    parser.add_argument('dir_out', help = 'directory to save downloaded GC data')
-    parser.add_argument('path_comp', help = 'path to compounds.csv')
-    parser.add_argument('path_csv', help = 'output file to save combined GC data')
-    parser.add_argument('--crawl-delay', type = float, default = 0.25,
-                        help = 'pause between HTTP requests, seconds')
-    parser.add_argument('--timeout', type = float, default = 10.0,
-                        help = 'max time to get response, seconds')
-    args = parser.parse_args()
-    
-    return args
+    parser = argparse.ArgumentParser(
+        description='Download local NIST Chemistry WebBook GC table parts.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        '--out',
+        default=DEFAULT_OUTPUT,
+        help='output raw GC parts ZIP archive path',
+    )
+    parser.add_argument(
+        '--manifest',
+        default=DEFAULT_MANIFEST,
+        help='CSV manifest path',
+    )
+    parser.add_argument(
+        '--ids',
+        help='comma-separated compound IDs to process instead of all available IDs',
+    )
+    parser.add_argument(
+        '--limit',
+        type=int,
+        help='maximum number of index rows to process',
+    )
+    parser.add_argument(
+        '--crawl-delay',
+        type=float,
+        default=1.0,
+        help='pause after HTTP requests, seconds',
+    )
+    parser.add_argument(
+        '--timeout',
+        type=float,
+        default=30.0,
+        help='per-request timeout, seconds',
+    )
+    parser.add_argument(
+        '--max-attempts',
+        type=int,
+        default=3,
+        help='maximum request attempts',
+    )
+    parser.add_argument(
+        '--rerun-completed',
+        action='store_true',
+        help=(
+            'legacy alias for --verify-existing-archive; check source pages '
+            'instead of skipping completed IDs'
+        ),
+    )
+    parser.add_argument(
+        '--verify-existing-archive',
+        action='store_true',
+        help=(
+            'check source pages even when matching GC CSV files already exist; '
+            'existing files are reused and only missing files are downloaded'
+        ),
+    )
+    parser.add_argument(
+        '--accept-data-terms',
+        action='store_true',
+        help='acknowledge that generated files are local artifacts',
+    )
+
+    return parser.parse_args()
 
 
 def check_arguments(args: argparse.Namespace) -> None:
-    '''Checks arguments
-    
-    Arguments:
-        args (argparse.Namespace): input parameters
-    
+    '''Validate command-line arguments.
+
+    Args:
+        args: Parsed CLI arguments.
+
+    Raises:
+        ValueError: If an argument is invalid.
+
     '''
-    # check save dir
-    if not os.path.exists(args.dir_out):
-        os.mkdir(args.dir_out) # FilexExistsError / FileNotFoundError
-    if not os.path.isdir(args.dir_out):
-        raise ValueError(f'Given dir_out argument is not a directory: {args.dir_out}')
-    # check output csv
-    if not os.path.isdir(os.path.dirname(args.path_csv)):
-        raise ValueError(f'Given path_csv file cannot be created: {args.path_csv}')
-    # check compounds.csv
-    if not os.path.exists(args.path_comp):
-        raise ValueError(f'Given path_comp argument does not exist: {args.path_comp}')
-    # crawl delay
+    if args.limit is not None and args.limit <= 0:
+        raise ValueError(f'--limit must be positive: {args.limit}')
     if args.crawl_delay < 0:
-        raise ValueError(f'--crawl-delay must be positive: {args.crawl_delay}')
-    # timeout
+        raise ValueError(f'--crawl-delay must be non-negative: {args.crawl_delay}')
     if args.timeout <= 0:
         raise ValueError(f'--timeout must be positive: {args.timeout}')
-    
-    return
+    if args.max_attempts <= 0:
+        raise ValueError(f'--max-attempts must be positive: {args.max_attempts}')
 
 
 def main() -> None:
-    '''Extracts raw GC data and saves to csv files'''
-    
-    # prepare arguments
+    '''Download local raw GC table parts archive.'''
     args = get_arguments()
     check_arguments(args)
-    
-    # download data
-    print('\nDownloading GC data ...')
-    download_gas_chromatography(args.dir_out, args.crawl_delay, args.timeout)
+    require_data_terms_acknowledgement(args.accept_data_terms)
+
+    ids = split_id_argument(args.ids)
+
+    print('\nDownloading GC table parts ...')
+    print(f'Output archive: {args.out}')
+    print(f'Manifest: {args.manifest}')
+
+    download_gas_chromatography(
+        args.out,
+        args.manifest,
+        crawl_delay=args.crawl_delay,
+        timeout=args.timeout,
+        max_attempts=args.max_attempts,
+        ids=ids,
+        limit=args.limit,
+        rerun_completed=args.rerun_completed,
+        verify_existing_archive=args.verify_existing_archive,
+    )
     print()
-    
-    # combine data
-    print('Combining GC data ...')
-    combine_tables(args.dir_out, args.path_comp, args.path_csv)
-    print()
-    
-    return
 
-
-
-#%% Main
 
 if __name__ == '__main__':
-    
     main()
-
-

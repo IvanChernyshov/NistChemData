@@ -440,6 +440,120 @@ def mol_archive_members_by_compound(
     return grouped
 
 
+def _clean_legacy_gc_filename_component(value: Any) -> str:
+    '''Clean one GC filename component while preserving old-style names.'''
+    text = '' if value is None else str(value)
+    text = text.replace('\r', ' ').replace('\n', ' ').replace('\t', ' ')
+    text = text.replace('/', '-').replace('\\', '-')
+    text = text.replace(';', ',')
+    text = re.sub(r' +', ' ', text).strip()
+    return text or 'unknown'
+
+
+def legacy_gc_member_name(
+    compound_id: Any,
+    ri_type: Any,
+    column_type: Any,
+    temp_regime: Any,
+) -> str:
+    '''Return the old-compatible GC CSV archive member name.
+
+    The name intentionally follows the historical NistChemData/NistChemPy
+    convention, for example::
+
+        R32777_Kovats' RI_non-polar column_isothermal.csv
+
+    Only path separators and control-like whitespace are normalized so existing
+    old downloads can be repacked and reused without renaming.
+
+    Args:
+        compound_id: NIST Chemistry WebBook compound ID.
+        ri_type: Retention-index type.
+        column_type: Column polarity/type label.
+        temp_regime: Temperature-regime label.
+
+    Returns:
+        Old-compatible CSV member basename.
+
+    '''
+    parts = [compound_id, ri_type, column_type, temp_regime]
+    cleaned = [_clean_legacy_gc_filename_component(part) for part in parts]
+    return '_'.join(cleaned) + '.csv'
+
+
+def parse_legacy_gc_member_name(member_name: str) -> dict[str, str]:
+    '''Parse an old-compatible GC CSV archive member name.
+
+    Args:
+        member_name: Archive member name or basename.
+
+    Returns:
+        Mapping with ``compound_id``, ``ri_type``, ``column_type``, and
+        ``temp_regime``.
+
+    Raises:
+        ValueError: If the member name does not follow the expected four-part
+            underscore-separated convention.
+
+    '''
+    basename = Path(member_name).name
+    if not basename.lower().endswith('.csv'):
+        raise ValueError(f'not a CSV member: {member_name}')
+
+    stem = basename[:-4]
+    parts = stem.split('_', 3)
+    if len(parts) != 4 or any(not part for part in parts):
+        raise ValueError(f'bad GC member name: {member_name}')
+
+    return {
+        'compound_id': parts[0],
+        'ri_type': parts[1],
+        'column_type': parts[2],
+        'temp_regime': parts[3],
+    }
+
+
+def gc_archive_members_by_compound(
+    path_zip: str | Path,
+    require_nonempty: bool = True,
+) -> dict[str, dict[str, str]]:
+    '''Group existing GC CSV ZIP members by compound ID.
+
+    The returned nested mapping has this form::
+
+        {compound_id: {canonical_basename: actual_archive_member}}
+
+    This lets users reuse old loose GC CSV files after placing them into a ZIP,
+    including archives where files were stored under a top-level directory.
+
+    Args:
+        path_zip: Path to the ZIP archive.
+        require_nonempty: If true, zero-size members are ignored.
+
+    Returns:
+        Mapping from compound ID to existing GC archive members.
+
+    '''
+    grouped: dict[str, dict[str, str]] = {}
+    for basename, member in archive_members_by_basename(
+        path_zip, require_nonempty=require_nonempty
+    ).items():
+        try:
+            info = parse_legacy_gc_member_name(basename)
+        except ValueError:
+            continue
+
+        canonical = legacy_gc_member_name(
+            info['compound_id'],
+            info['ri_type'],
+            info['column_type'],
+            info['temp_regime'],
+        )
+        grouped.setdefault(info['compound_id'], {})[canonical] = member
+
+    return grouped
+
+
 def zip_writestr_if_missing(
     path_zip: str | Path,
     member_name: str,

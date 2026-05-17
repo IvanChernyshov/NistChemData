@@ -32,8 +32,12 @@ paths are:
 local-data/
   raw/
     spectra/
-    mol3d/
-    gc/
+      nist_IR.zip
+      nist_TZ.zip
+      nist_MS.zip
+      nist_UV.zip
+    nist_mol3D_raw.zip
+    nist_gc_parts.zip
   processed/
   manifests/
 ```
@@ -167,14 +171,54 @@ python scripts/process_mol3D.py \
   --accept-data-terms
 ```
 
-### Remaining scripts
+### `download_gas_chromatography.py`
 
-The remaining download script is still being migrated from the earlier
-data-repository workflow to the local reconstruction workflow:
+`download_gas_chromatography.py` downloads available WebBook gas-chromatography
+retention-index tables into a local raw CSV-parts ZIP archive. The ZIP members
+use the historical filename convention:
 
-- `download_gas_chromatography.py` downloads local gas-chromatography retention
-  index tables and can assemble a local combined table.
+```text
+{ID}_{Retention index type}_{Column polarity}_{Temperature regime}.csv
+```
 
-Future updates will migrate this script to the same explicit local-output,
-manifest, and data-scope acknowledgement pattern. Processing scripts use plain
-success/failure behavior because they operate on local inputs.
+For example:
+
+```text
+R32777_Kovats' RI_non-polar column_isothermal.csv
+```
+
+This means old loose GC CSV files can usually be repacked into the raw ZIP and
+reused without re-downloading. By default, a compound with existing non-empty GC
+CSV members is skipped. Use `--verify-existing-archive` to scan WebBook source
+pages and download only missing table parts.
+
+Example:
+
+```bash
+python scripts/download_gas_chromatography.py \
+  --out local-data/raw/nist_gc_parts.zip \
+  --manifest local-data/manifests/nist_gc_manifest.csv \
+  --crawl-delay 1.0 \
+  --timeout 30 \
+  --max-attempts 3 \
+  --accept-data-terms
+```
+
+### `process_gas_chromatography.py`
+
+`process_gas_chromatography.py` combines a local raw GC-parts ZIP archive into a
+single local CSV table and, optionally, a ZIP archive containing that table. It
+adds compound names and InChI strings from the NistChemPy index and derives GC
+metadata from the old-compatible raw part filenames. Since processing uses a
+local archive, it does not write a manifest; unreadable or badly named raw parts
+abort the run with the failing member name.
+
+Example:
+
+```bash
+python scripts/process_gas_chromatography.py \
+  local-data/raw/nist_gc_parts.zip \
+  local-data/processed/nist_gc.csv \
+  --zip-output local-data/processed/nist_gc.zip \
+  --accept-data-terms
+```

@@ -32,9 +32,9 @@ user's machine.
 | `local-data/raw/nist_mol3D_raw.zip` | `scripts/download_mol3D.py` | WebBook 3D MOL/SDF links | Generated locally, not committed |
 | `local-data/processed/nist_mol3D.sdf` | `scripts/process_mol3D.py` | Derived from local raw MOL archive | Generated locally, not committed |
 | `local-data/processed/nist_mol3D.zip` | `scripts/process_mol3D.py` | Archive of generated local SDF | Generated locally, not committed |
-| `local-data/raw/gc/nist_gc_parts.zip` | `scripts/download_gas_chromatography.py` | WebBook gas-chromatography retention-index pages | Generated locally, not committed |
-| `local-data/processed/nist_gc.csv` | `scripts/download_gas_chromatography.py` | Combined table derived from local GC part files | Generated locally, not committed |
-| `local-data/processed/nist_gc.zip` | `scripts/download_gas_chromatography.py` | Archive of generated local GC table | Generated locally, not committed |
+| `local-data/raw/nist_gc_parts.zip` | `scripts/download_gas_chromatography.py` | WebBook gas-chromatography retention-index pages | Generated locally, not committed |
+| `local-data/processed/nist_gc.csv` | `scripts/process_gas_chromatography.py` | Combined table derived from local GC part files | Generated locally, not committed |
+| `local-data/processed/nist_gc.zip` | `scripts/process_gas_chromatography.py` | Archive of generated local GC table | Generated locally, not committed |
 
 ## Download manifests
 
