@@ -14,14 +14,23 @@ scripts.
 
 ## Requirements
 
-Install the script requirements from:
+Install the core script requirements from:
 
 ```bash
 pip install -r scripts/requirements.txt
 ```
 
-Some workflows may require additional optional dependencies. For example, the
-3D-structure workflow may use RDKit for validation.
+Optional RDKit validation for `process_mol3D.py --validate` requires RDKit. If
+pip installation is suitable for your platform, you can install the optional
+requirements from:
+
+```bash
+pip install -r scripts/requirements-rdkit.txt
+```
+
+If RDKit installation through pip is problematic, install RDKit from conda-forge
+and run the scripts from that environment instead. RDKit is not required for the
+default mol3D assembly workflow.
 
 ## Local output layout
 

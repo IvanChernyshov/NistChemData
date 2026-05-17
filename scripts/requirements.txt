@@ -1,2 +1,13 @@
-nistchempy >= 1.0.3
+# Core dependencies for NistChemData local reconstruction scripts.
+#
+# The scripts currently use NistChemPy 1.0.x as the WebBook access/index layer.
+# Keep the upper bound until the planned NistChemPy local-index refactor is
+# reflected in scripts/common.py.
+nistchempy>=1.0.6,<2
+
+# Shared script/runtime dependencies.
 tqdm
+pandas
+
+# Required only by process_ir_spectra.py for reading JCAMP-DX/JDX headers.
+jcamp

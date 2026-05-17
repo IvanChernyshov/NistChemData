@@ -1,0 +1,5 @@
+# Optional dependency for process_mol3D.py --validate.
+#
+# If pip installation is not suitable on your platform, install RDKit from
+# conda-forge instead and then use the same environment for these scripts.
+rdkit
