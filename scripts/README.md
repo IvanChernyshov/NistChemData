@@ -66,6 +66,20 @@ For a small test run, use `--limit` or `--ids`:
 python scripts/download_spectra.py IR --limit 5 --accept-data-terms
 ```
 
+Resume behavior uses both the manifest and the ZIP archive. By default, a
+compound is skipped if the manifest is valid or if the archive already contains
+non-empty matching JDX files, including files stored under a legacy top-level
+folder such as `TZ/B7000012_TZ_0.jdx`. To scan source pages and repair
+potentially missing spectrum indexes without re-downloading existing JDX files,
+use:
+
+```bash
+python scripts/download_spectra.py TZ \
+  --out local-data/raw/spectra/nist_TZ.zip \
+  --verify-existing-archive \
+  --accept-data-terms
+```
+
 ### `process_ms_spectra.py`
 
 `process_ms_spectra.py` converts a local raw MS JDX archive into a local JSONL
@@ -85,17 +99,39 @@ python scripts/process_ms_spectra.py \
   --accept-data-terms
 ```
 
+### `process_ir_spectra.py`
+
+`process_ir_spectra.py` extracts metadata from a local raw IR JDX archive into a
+local CSV table. It uses the NistChemPy index for compound names and InChI
+strings, so it no longer requires the historical `data/nist_compounds.csv` file.
+Since processing uses a local archive, it does not write a manifest; parsing
+errors abort the run with the failing archive member name.
+
+Example:
+
+```bash
+python scripts/process_ir_spectra.py \
+  local-data/raw/spectra/nist_IR.zip \
+  local-data/processed/nist_ir_info.csv \
+  --accept-data-terms
+```
+
+For a small test run, use `--limit` or `--ids`:
+
+```bash
+python scripts/process_ir_spectra.py --limit 10 --accept-data-terms
+```
+
 ### Remaining scripts
 
-The remaining scripts are still being migrated from the earlier data-repository
-workflow to the local reconstruction workflow:
+The remaining download scripts are still being migrated from the earlier
+data-repository workflow to the local reconstruction workflow:
 
-- `process_ir_spectra.py` extracts metadata from a local raw IR JDX archive.
 - `download_mol3D.py` downloads local 3D MOL files and can assemble a local SDF
   archive.
 - `download_gas_chromatography.py` downloads local gas-chromatography retention
   index tables and can assemble a local combined table.
 
 Future updates will migrate download scripts to the same explicit local-output,
-manifest, and data-scope acknowledgement pattern. Processing scripts will use
-plain success/failure behavior because they operate on local inputs.
+manifest, and data-scope acknowledgement pattern. Processing scripts use plain
+success/failure behavior because they operate on local inputs.

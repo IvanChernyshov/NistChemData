@@ -28,6 +28,7 @@ from common import (
     request_nist,
     require_data_terms_acknowledgement,
     split_id_argument,
+    spectrum_archive_members_by_compound,
     spectrum_download_type,
     spectrum_search_column,
     utc_now,
@@ -176,6 +177,7 @@ def download_spectra(
     ids: list[str] | None = None,
     limit: int | None = None,
     rerun_completed: bool = False,
+    verify_existing_archive: bool = False,
 ) -> None:
     '''Download available spectra of one type into a local ZIP archive.
 
@@ -188,9 +190,13 @@ def download_spectra(
         max_attempts: Maximum number of request attempts.
         ids: Optional ordered list of compound IDs to process.
         limit: Optional maximum number of index rows to process.
-        rerun_completed: If false, skip IDs already marked as done in the
-            manifest. Failed and no-data rows are retried naturally because
-            only done rows are skipped.
+        rerun_completed: Legacy alias for ``verify_existing_archive``. If true,
+            source pages are checked even for compounds with completed manifest
+            rows or existing archive members.
+        verify_existing_archive: If true, check source pages for all selected
+            compounds and download only missing archive members. If false, a
+            compound with non-empty existing spectrum archive members is treated
+            as complete and skipped.
 
     '''
     spec_type = normalize_spectrum_type(spec_type)
@@ -206,11 +212,29 @@ def download_spectra(
     ensure_parent(path_out)
     ensure_parent(path_manifest)
 
-    completed_ids = set()
-    if not rerun_completed:
-        completed_ids = completed_ids_from_manifest(path_manifest, data_type=data_type)
+    try:
+        archive_state = spectrum_archive_members_by_compound(
+            path_out, spec_type, require_nonempty=True
+        )
+    except zipfile.BadZipFile as exc:
+        raise RuntimeError(f'Invalid ZIP archive: {path_out}') from exc
 
-    existing_members = existing_zip_members(path_out)
+    existing_members = existing_zip_members(path_out, require_nonempty=True)
+    verify_archive = verify_existing_archive or rerun_completed
+
+    completed_ids = set()
+    if not verify_archive:
+        completed_ids = completed_ids_from_manifest(
+            path_manifest,
+            data_type=data_type,
+            path_archive=path_out,
+            require_archive_members=True,
+        )
+        # A valid manifest row is useful, but an existing non-empty archive is
+        # also a source of resume state. This lets old complete archives be
+        # reused without a manifest. Use --verify-existing-archive to scan the
+        # source pages and repair potentially missing spectrum indexes.
+        completed_ids.update(archive_state)
 
     for _, row in tqdm(rows.iterrows(), total=len(rows)):
         compound_id = str(row['ID'])
@@ -220,6 +244,7 @@ def download_spectra(
             continue
 
         archive_members = []
+        existing_for_compound = archive_state.setdefault(compound_id, {})
         try:
             indexes = fetch_spectrum_indexes(source_url, config)
             if not indexes:
@@ -239,8 +264,14 @@ def download_spectra(
             with zipfile.ZipFile(path_out, 'a', compression=zipfile.ZIP_DEFLATED) as zipf:
                 for spec_idx in indexes:
                     member_name = f'{compound_id}_{spec_type}_{spec_idx}.jdx'
-                    archive_members.append(member_name)
+                    existing_member = existing_for_compound.get(member_name)
+                    if existing_member is not None:
+                        archive_members.append(existing_member)
+                        continue
+
                     if member_name in existing_members:
+                        archive_members.append(member_name)
+                        existing_for_compound[member_name] = member_name
                         continue
 
                     jdx_text = fetch_spectrum_jdx(
@@ -251,6 +282,8 @@ def download_spectra(
                     )
                     zipf.writestr(member_name, jdx_text)
                     existing_members.add(member_name)
+                    existing_for_compound[member_name] = member_name
+                    archive_members.append(member_name)
 
             write_manifest(
                 path_manifest,
@@ -328,7 +361,18 @@ def get_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--rerun-completed',
         action='store_true',
-        help='do not skip IDs already marked as done in the manifest',
+        help=(
+            'legacy alias for --verify-existing-archive; check source pages '
+            'instead of skipping completed IDs'
+        ),
+    )
+    parser.add_argument(
+        '--verify-existing-archive',
+        action='store_true',
+        help=(
+            'check source pages even when matching JDX files already exist; '
+            'existing files are reused and only missing files are downloaded'
+        ),
     )
     parser.add_argument(
         '--accept-data-terms',
@@ -388,6 +432,7 @@ def main() -> None:
         ids=ids,
         limit=args.limit,
         rerun_completed=args.rerun_completed,
+        verify_existing_archive=args.verify_existing_archive,
     )
     print()
 

@@ -275,23 +275,130 @@ def ensure_dir(path: str | Path) -> None:
     Path(path).mkdir(parents=True, exist_ok=True)
 
 
-def existing_zip_members(path_zip: str | Path) -> set[str]:
+def zip_member_sizes(path_zip: str | Path) -> dict[str, int]:
+    '''Return archive member sizes keyed by member name.
+
+    Args:
+        path_zip: Path to the ZIP archive.
+
+    Returns:
+        Mapping from archive member names to uncompressed sizes. Returns an
+        empty mapping if the archive does not exist. If a ZIP contains duplicate
+        member names, the last entry wins, which matches the usual append-based
+        repair behavior used by these scripts.
+
+    Raises:
+        zipfile.BadZipFile: If the archive exists but is not a valid ZIP file.
+
+    '''
+    path_zip = Path(path_zip)
+    if not path_zip.exists():
+        return {}
+
+    with zipfile.ZipFile(path_zip, 'r') as zipf:
+        return {info.filename: info.file_size for info in zipf.infolist()}
+
+
+def existing_zip_members(
+    path_zip: str | Path,
+    require_nonempty: bool = False,
+) -> set[str]:
     '''Return archive member names already present in a ZIP file.
 
     Args:
         path_zip: Path to the ZIP archive.
+        require_nonempty: If true, return only members with nonzero size.
 
     Returns:
         Set of archive member names. Returns an empty set if the archive does
         not yet exist.
 
     '''
-    path_zip = Path(path_zip)
-    if not path_zip.exists():
-        return set()
+    members = zip_member_sizes(path_zip)
+    if require_nonempty:
+        return {name for name, size in members.items() if size > 0}
+    return set(members)
 
-    with zipfile.ZipFile(path_zip, 'r') as zipf:
-        return set(zipf.namelist())
+
+def archive_members_by_basename(
+    path_zip: str | Path,
+    require_nonempty: bool = True,
+) -> dict[str, str]:
+    '''Return ZIP members keyed by their root-level basename.
+
+    This helper lets reconstruction scripts reuse older archives whose members
+    were stored under a top-level directory, for example
+    ``TZ/B7000012_TZ_0.jdx`` instead of ``B7000012_TZ_0.jdx``. The values are
+    the actual member paths present in the archive, so manifests can still
+    validate the archive exactly.
+
+    Args:
+        path_zip: Path to the ZIP archive.
+        require_nonempty: If true, zero-size members are ignored.
+
+    Returns:
+        Mapping from basename to actual ZIP member name. If duplicate basenames
+        occur, the last non-empty member in the archive wins.
+
+    '''
+    members = zip_member_sizes(path_zip)
+    out: dict[str, str] = {}
+    for member, size in members.items():
+        if member.endswith('/'):
+            continue
+        if require_nonempty and size <= 0:
+            continue
+
+        basename = Path(member).name
+        if basename:
+            out[basename] = member
+
+    return out
+
+
+def spectrum_archive_members_by_compound(
+    path_zip: str | Path,
+    spec_type: str,
+    require_nonempty: bool = True,
+) -> dict[str, dict[str, str]]:
+    '''Group existing spectrum ZIP members by compound ID.
+
+    The returned nested mapping has this form::
+
+        {compound_id: {canonical_basename: actual_archive_member}}
+
+    For example, an existing legacy member ``TZ/B7000012_TZ_0.jdx`` is returned
+    as ``{'B7000012': {'B7000012_TZ_0.jdx': 'TZ/B7000012_TZ_0.jdx'}}``.
+    This makes existing archives usable for resume without forcing immediate
+    repackaging.
+
+    Args:
+        path_zip: Path to the ZIP archive.
+        spec_type: Spectrum type: ``IR``, ``TZ``, ``MS``, or ``UV``.
+        require_nonempty: If true, zero-size members are ignored.
+
+    Returns:
+        Mapping from compound ID to existing archive members.
+
+    '''
+    spec_type = normalize_spectrum_type(spec_type)
+    pattern = re.compile(
+        rf'^(?P<compound_id>.+)_{re.escape(spec_type)}_(?P<index>.+)\.jdx$',
+        flags=re.IGNORECASE,
+    )
+
+    grouped: dict[str, dict[str, str]] = {}
+    for basename, member in archive_members_by_basename(
+        path_zip, require_nonempty=require_nonempty
+    ).items():
+        match = pattern.match(basename)
+        if match is None:
+            continue
+
+        compound_id = match.group('compound_id')
+        grouped.setdefault(compound_id, {})[basename] = member
+
+    return grouped
 
 
 def zip_writestr_if_missing(
@@ -340,6 +447,52 @@ def format_archive_members(members: Iterable[str]) -> str:
     return ';'.join(str(member) for member in members)
 
 
+def parse_archive_members(value: Any) -> list[str]:
+    '''Parse a manifest archive-member cell.
+
+    Args:
+        value: Semicolon-separated archive member list.
+
+    Returns:
+        List of non-empty archive member names.
+
+    '''
+    if value is None:
+        return []
+
+    return [member.strip() for member in str(value).split(';') if member.strip()]
+
+
+def archive_members_present(
+    archive_sizes: Mapping[str, int],
+    members: Sequence[str],
+    require_nonempty: bool = True,
+) -> bool:
+    '''Check whether manifest-listed members exist in an archive.
+
+    Args:
+        archive_sizes: Mapping returned by ``zip_member_sizes``.
+        members: Archive members listed in a manifest row.
+        require_nonempty: If true, members with zero size are treated as
+            missing/incomplete.
+
+    Returns:
+        True if all listed members are present and, when requested, non-empty.
+        Empty member lists are never considered complete.
+
+    '''
+    if not members:
+        return False
+
+    for member in members:
+        if member not in archive_sizes:
+            return False
+        if require_nonempty and archive_sizes[member] <= 0:
+            return False
+
+    return True
+
+
 def append_manifest_row(
     path_manifest: str | Path,
     row: Mapping[str, Any],
@@ -386,23 +539,60 @@ def read_manifest_rows(path_manifest: str | Path) -> list[dict[str, str]]:
 def completed_ids_from_manifest(
     path_manifest: str | Path,
     data_type: str | None = None,
+    path_archive: str | Path | None = None,
+    require_archive_members: bool = False,
+    require_nonempty: bool = True,
 ) -> set[str]:
-    '''Return compound IDs marked as successfully completed in a manifest.
+    '''Return compound IDs marked as completed and actually present.
+
+    A manifest is a resume hint, not the source of truth. When an archive path
+    is supplied, a row with ``status == 'done'`` is considered complete only if
+    all members listed in the row are present in the archive. This prevents a
+    stale manifest from suppressing downloads when the data archive was deleted,
+    moved, or partially written.
 
     Args:
         path_manifest: Path to the manifest CSV file.
         data_type: Optional data type filter.
+        path_archive: Optional ZIP archive path used to validate manifest-listed
+            members.
+        require_archive_members: If true, require each completed row to list at
+            least one archive member and require those members to exist in
+            ``path_archive``. This is enabled automatically when
+            ``path_archive`` is supplied.
+        require_nonempty: If true, zero-size archive members are treated as
+            incomplete.
 
     Returns:
-        Set of compound IDs with ``status == 'done'``.
+        Set of compound IDs with valid completed rows.
 
     '''
+    validate_archive = path_archive is not None or require_archive_members
+    archive_sizes: dict[str, int] = {}
+    if validate_archive:
+        if path_archive is None:
+            return set()
+        try:
+            archive_sizes = zip_member_sizes(path_archive)
+        except zipfile.BadZipFile:
+            return set()
+
     completed = set()
     for row in read_manifest_rows(path_manifest):
         if row.get('status') != 'done':
             continue
         if data_type is not None and row.get('data_type') != data_type:
             continue
+
+        if validate_archive:
+            members = parse_archive_members(row.get('archive_members'))
+            if not archive_members_present(
+                archive_sizes,
+                members,
+                require_nonempty=require_nonempty,
+            ):
+                continue
+
         compound_id = row.get('compound_id')
         if compound_id:
             completed.add(compound_id)

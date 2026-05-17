@@ -13,9 +13,11 @@ user's machine.
 - Generated files may be derived from NIST Chemistry WebBook / SRD 69 and from
   source-literature-origin collections exposed through WebBook records.
 - The repository MIT license applies only to original scripts and documentation.
-- Generated files should be accompanied by lightweight manifests where practical.
+- Download workflows should write lightweight manifests where practical.
 - Manifests record what was attempted, what was written, and which source section
   or URL was used; they do not grant reuse rights.
+- Processing workflows operate on local files and should normally use plain
+  success/failure behavior rather than separate manifests.
 
 ## Planned local artifacts
 
@@ -34,12 +36,14 @@ user's machine.
 | `local-data/processed/nist_gc.csv` | `scripts/download_gas_chromatography.py` | Combined table derived from local GC part files | Generated locally, not committed |
 | `local-data/processed/nist_gc.zip` | `scripts/download_gas_chromatography.py` | Archive of generated local GC table | Generated locally, not committed |
 
-## Manifests
+## Download manifests
 
-Large local workflows should write simple CSV manifests under
+Large local download workflows should write simple CSV manifests under
 `local-data/manifests/`. A manifest is a local processing ledger, not a license.
 It helps users resume downloads, inspect failures, and trace generated files back
-to source sections or URLs.
+to source sections or URLs. Processing scripts that consume local archives do
+not need manifests by default; they should complete successfully or fail with a
+clear error.
 
 Typical manifest columns:
 
