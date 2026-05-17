@@ -17,7 +17,7 @@ from common import (
     RIGHTS_STATUS,
     SOURCE_DATABASE,
     append_manifest_row,
-    completed_ids_from_manifest,
+    completed_ids_for_download,
     ensure_parent,
     existing_zip_members,
     filter_index_rows,
@@ -176,7 +176,6 @@ def download_spectra(
     max_attempts: int = 3,
     ids: list[str] | None = None,
     limit: int | None = None,
-    rerun_completed: bool = False,
     verify_existing_archive: bool = False,
 ) -> None:
     '''Download available spectra of one type into a local ZIP archive.
@@ -190,13 +189,10 @@ def download_spectra(
         max_attempts: Maximum number of request attempts.
         ids: Optional ordered list of compound IDs to process.
         limit: Optional maximum number of index rows to process.
-        rerun_completed: Legacy alias for ``verify_existing_archive``. If true,
-            source pages are checked even for compounds with completed manifest
-            rows or existing archive members.
         verify_existing_archive: If true, check source pages for all selected
-            compounds and download only missing archive members. If false, a
-            compound with non-empty existing spectrum archive members is treated
-            as complete and skipped.
+            compounds and download only missing archive members. If false,
+            skip valid completed manifest rows and archive-only compounds with
+            no manifest state.
 
     '''
     spec_type = normalize_spectrum_type(spec_type)
@@ -220,21 +216,14 @@ def download_spectra(
         raise RuntimeError(f'Invalid ZIP archive: {path_out}') from exc
 
     existing_members = existing_zip_members(path_out, require_nonempty=True)
-    verify_archive = verify_existing_archive or rerun_completed
-
     completed_ids = set()
-    if not verify_archive:
-        completed_ids = completed_ids_from_manifest(
+    if not verify_existing_archive:
+        completed_ids = completed_ids_for_download(
             path_manifest,
             data_type=data_type,
             path_archive=path_out,
-            require_archive_members=True,
+            archive_state=archive_state,
         )
-        # A valid manifest row is useful, but an existing non-empty archive is
-        # also a source of resume state. This lets old complete archives be
-        # reused without a manifest. Use --verify-existing-archive to scan the
-        # source pages and repair potentially missing spectrum indexes.
-        completed_ids.update(archive_state)
 
     for _, row in tqdm(rows.iterrows(), total=len(rows)):
         compound_id = str(row['ID'])
@@ -359,14 +348,6 @@ def get_arguments() -> argparse.Namespace:
         help='maximum request attempts',
     )
     parser.add_argument(
-        '--rerun-completed',
-        action='store_true',
-        help=(
-            'legacy alias for --verify-existing-archive; check source pages '
-            'instead of skipping completed IDs'
-        ),
-    )
-    parser.add_argument(
         '--verify-existing-archive',
         action='store_true',
         help=(
@@ -431,7 +412,6 @@ def main() -> None:
         max_attempts=args.max_attempts,
         ids=ids,
         limit=args.limit,
-        rerun_completed=args.rerun_completed,
         verify_existing_archive=args.verify_existing_archive,
     )
     print()

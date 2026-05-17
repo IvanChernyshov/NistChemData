@@ -152,6 +152,8 @@ def process_mol3d(
     '''
     path_zip = Path(path_zip)
     path_sdf = Path(path_sdf)
+    if not path_zip.exists():
+        raise FileNotFoundError(f'Input archive not found: {path_zip}')
     ensure_parent(path_sdf)
 
     members = collect_mol_members(path_zip, ids=ids, limit=limit)

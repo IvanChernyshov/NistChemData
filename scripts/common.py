@@ -265,16 +265,6 @@ def ensure_parent(path: str | Path) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
 
 
-def ensure_dir(path: str | Path) -> None:
-    '''Create a directory if needed.
-
-    Args:
-        path: Directory path to create.
-
-    '''
-    Path(path).mkdir(parents=True, exist_ok=True)
-
-
 def zip_member_sizes(path_zip: str | Path) -> dict[str, int]:
     '''Return archive member sizes keyed by member name.
 
@@ -554,39 +544,6 @@ def gc_archive_members_by_compound(
     return grouped
 
 
-def zip_writestr_if_missing(
-    path_zip: str | Path,
-    member_name: str,
-    data: str | bytes,
-    overwrite: bool = False,
-) -> bool:
-    '''Write one member to a ZIP archive unless it already exists.
-
-    Args:
-        path_zip: Path to the ZIP archive.
-        member_name: Member name inside the archive.
-        data: Text or bytes to write.
-        overwrite: Whether to replace an existing member. Replacing a ZIP member
-            is implemented by appending a duplicate member with the same name;
-            for normal workflows, keep this as ``False``.
-
-    Returns:
-        ``True`` if data were written, otherwise ``False``.
-
-    '''
-    path_zip = Path(path_zip)
-    ensure_parent(path_zip)
-
-    if not overwrite and member_name in existing_zip_members(path_zip):
-        return False
-
-    mode = 'a' if path_zip.exists() else 'w'
-    with zipfile.ZipFile(path_zip, mode, compression=zipfile.ZIP_DEFLATED) as zipf:
-        zipf.writestr(member_name, data)
-
-    return True
-
-
 def format_archive_members(members: Iterable[str]) -> str:
     '''Format archive member names for a manifest cell.
 
@@ -689,87 +646,95 @@ def read_manifest_rows(path_manifest: str | Path) -> list[dict[str, str]]:
         return list(csv.DictReader(in_file))
 
 
-def completed_ids_from_manifest(
+
+def latest_manifest_rows(
     path_manifest: str | Path,
     data_type: str | None = None,
-    path_archive: str | Path | None = None,
-    require_archive_members: bool = False,
-    require_nonempty: bool = True,
-) -> set[str]:
-    '''Return compound IDs marked as completed and actually present.
-
-    A manifest is a resume hint, not the source of truth. When an archive path
-    is supplied, a row with ``status == 'done'`` is considered complete only if
-    all members listed in the row are present in the archive. This prevents a
-    stale manifest from suppressing downloads when the data archive was deleted,
-    moved, or partially written.
+) -> dict[str, dict[str, str]]:
+    '''Return the latest manifest row for each compound ID.
 
     Args:
         path_manifest: Path to the manifest CSV file.
-        data_type: Optional data type filter.
-        path_archive: Optional ZIP archive path used to validate manifest-listed
-            members.
-        require_archive_members: If true, require each completed row to list at
-            least one archive member and require those members to exist in
-            ``path_archive``. This is enabled automatically when
-            ``path_archive`` is supplied.
+        data_type: Optional data-type filter.
+
+    Returns:
+        Mapping from compound ID to the latest matching manifest row. Later rows
+        override earlier rows because append-only manifests record the most recent
+        state last.
+
+    '''
+    latest: dict[str, dict[str, str]] = {}
+    for row in read_manifest_rows(path_manifest):
+        if data_type is not None and row.get('data_type') != data_type:
+            continue
+
+        compound_id = row.get('compound_id')
+        if compound_id:
+            latest[compound_id] = row
+
+    return latest
+
+
+def completed_ids_for_download(
+    path_manifest: str | Path,
+    data_type: str,
+    path_archive: str | Path,
+    archive_state: Mapping[str, Mapping[str, str]],
+    require_nonempty: bool = True,
+) -> set[str]:
+    '''Return compound IDs that can be skipped by a download workflow.
+
+    The function combines the append-only manifest with the current archive
+    contents while avoiding stale-state mistakes:
+
+    - if the latest manifest row for an ID is a valid ``done`` row whose listed
+      archive members are present, the ID is complete;
+    - if no manifest row exists for an ID, non-empty archive members can be used
+      as legacy/local resume state;
+    - if the latest manifest row is ``error``, ``no_data``, or an invalid
+      ``done`` row, archive-only state is not trusted and the ID is rechecked.
+
+    Args:
+        path_manifest: Path to the manifest CSV file.
+        data_type: Manifest data type for the current workflow.
+        path_archive: ZIP archive path used to validate manifest-listed members.
+        archive_state: Existing archive members grouped by compound ID.
         require_nonempty: If true, zero-size archive members are treated as
             incomplete.
 
     Returns:
-        Set of compound IDs with valid completed rows.
+        Set of compound IDs that can be skipped without contacting the source.
 
     '''
-    validate_archive = path_archive is not None or require_archive_members
-    archive_sizes: dict[str, int] = {}
-    if validate_archive:
-        if path_archive is None:
-            return set()
-        try:
-            archive_sizes = zip_member_sizes(path_archive)
-        except zipfile.BadZipFile:
-            return set()
+    try:
+        archive_sizes = zip_member_sizes(path_archive)
+    except zipfile.BadZipFile:
+        return set()
 
-    completed = set()
-    for row in read_manifest_rows(path_manifest):
+    latest = latest_manifest_rows(path_manifest, data_type=data_type)
+    completed: set[str] = set()
+
+    for compound_id, row in latest.items():
         if row.get('status') != 'done':
             continue
-        if data_type is not None and row.get('data_type') != data_type:
-            continue
 
-        if validate_archive:
-            members = parse_archive_members(row.get('archive_members'))
-            if not archive_members_present(
-                archive_sizes,
-                members,
-                require_nonempty=require_nonempty,
-            ):
-                continue
-
-        compound_id = row.get('compound_id')
-        if compound_id:
+        members = parse_archive_members(row.get('archive_members'))
+        if archive_members_present(
+            archive_sizes,
+            members,
+            require_nonempty=require_nonempty,
+        ):
             completed.add(compound_id)
+
+    # Existing non-empty archive members are useful for reusing legacy/local raw
+    # archives without manifests. They are used only when the manifest has no
+    # state for the compound; an explicit latest error/no_data/invalid-done row
+    # should trigger a repair attempt instead of silent skipping.
+    for compound_id in archive_state:
+        if compound_id not in latest:
+            completed.add(compound_id)
+
     return completed
-
-
-def safe_filename_component(value: Any, default: str = 'unknown') -> str:
-    '''Convert a value to a conservative filename component.
-
-    Args:
-        value: Value to sanitize.
-        default: Fallback string for empty values.
-
-    Returns:
-        Sanitized filename component containing only ASCII letters, digits,
-        underscores, periods, hyphens, plus signs, equals signs, and
-        parentheses.
-
-    '''
-    text = '' if value is None else str(value)
-    text = text.encode('ascii', errors='ignore').decode('ascii')
-    text = re.sub(r'[^A-Za-z0-9_.\-+=()]+', '_', text)
-    text = re.sub(r'_+', '_', text).strip('._-')
-    return text or default
 
 
 def split_id_argument(value: str | None) -> list[str] | None:

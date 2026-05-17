@@ -17,7 +17,7 @@ from common import (
     RIGHTS_STATUS,
     SOURCE_DATABASE,
     append_manifest_row,
-    completed_ids_from_manifest,
+    completed_ids_for_download,
     ensure_parent,
     filter_index_rows,
     format_archive_members,
@@ -136,7 +136,6 @@ def download_gas_chromatography(
     max_attempts: int = 3,
     ids: list[str] | None = None,
     limit: int | None = None,
-    rerun_completed: bool = False,
     verify_existing_archive: bool = False,
 ) -> None:
     '''Download available GC tables into a local raw parts ZIP archive.
@@ -149,13 +148,10 @@ def download_gas_chromatography(
         max_attempts: Maximum number of request attempts.
         ids: Optional ordered list of compound IDs to process.
         limit: Optional maximum number of index rows to process.
-        rerun_completed: Legacy alias for ``verify_existing_archive``. If true,
-            source pages are checked even for compounds with completed manifest
-            rows or existing archive members.
         verify_existing_archive: If true, check source pages for all selected
-            compounds and download only missing GC table parts. If false, a
-            compound with non-empty existing GC CSV members is treated as
-            complete and skipped.
+            compounds and download only missing GC table parts. If false, skip
+            valid completed manifest rows and archive-only compounds with no
+            manifest state.
 
     '''
     config = make_request_config(crawl_delay, timeout, max_attempts)
@@ -175,21 +171,14 @@ def download_gas_chromatography(
     except zipfile.BadZipFile as exc:
         raise RuntimeError(f'Invalid ZIP archive: {path_out}') from exc
 
-    verify_archive = verify_existing_archive or rerun_completed
-
     completed_ids = set()
-    if not verify_archive:
-        completed_ids = completed_ids_from_manifest(
+    if not verify_existing_archive:
+        completed_ids = completed_ids_for_download(
             path_manifest,
             data_type=DATA_TYPE,
             path_archive=path_out,
-            require_archive_members=True,
+            archive_state=archive_state,
         )
-        # Existing non-empty GC CSV members are also valid resume state. This
-        # lets old loose GC files be repacked into a ZIP and reused without a
-        # manifest. Use --verify-existing-archive to scan source pages and
-        # repair potentially missing table parts.
-        completed_ids.update(archive_state)
 
     for _, row in tqdm(rows.iterrows(), total=len(rows)):
         compound_id = str(row['ID'])
@@ -310,14 +299,6 @@ def get_arguments() -> argparse.Namespace:
         help='maximum request attempts',
     )
     parser.add_argument(
-        '--rerun-completed',
-        action='store_true',
-        help=(
-            'legacy alias for --verify-existing-archive; check source pages '
-            'instead of skipping completed IDs'
-        ),
-    )
-    parser.add_argument(
         '--verify-existing-archive',
         action='store_true',
         help=(
@@ -374,7 +355,6 @@ def main() -> None:
         max_attempts=args.max_attempts,
         ids=ids,
         limit=args.limit,
-        rerun_completed=args.rerun_completed,
         verify_existing_archive=args.verify_existing_archive,
     )
     print()

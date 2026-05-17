@@ -62,7 +62,9 @@ Historically documented local artifacts include:
 | `data/nist_gc.zip` | Gas-chromatography retention-index table archive | Not redistributed |
 
 See [PROVENANCE.md](PROVENANCE.md) for the planned local reconstruction and
-provenance model.
+provenance model. The current processed MS workflow writes
+`local-data/processed/nist_ms.jsonl` by default; JSON-array output remains
+available as an optional compatibility format.
 
 ## Scripts
 

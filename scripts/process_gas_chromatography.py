@@ -177,6 +177,8 @@ def process_gas_chromatography(
     '''
     path_zip = Path(path_zip)
     path_csv = Path(path_csv)
+    if not path_zip.exists():
+        raise FileNotFoundError(f'Input archive not found: {path_zip}')
     ensure_parent(path_csv)
 
     members = collect_gc_members(path_zip, ids=ids, limit=limit)

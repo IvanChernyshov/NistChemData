@@ -41,9 +41,12 @@ user's machine.
 Large local download workflows should write simple CSV manifests under
 `local-data/manifests/`. A manifest is a local processing ledger, not a license.
 It helps users resume downloads, inspect failures, and trace generated files back
-to source sections or URLs. Processing scripts that consume local archives do
-not need manifests by default; they should complete successfully or fail with a
-clear error.
+to source sections or URLs. A manifest is treated as a resume hint and is always
+checked against the current archive contents. If the latest manifest row for a
+compound is `error`, `no_data`, or an invalid `done` row, download scripts retry
+or repair that compound instead of silently trusting older archive members.
+Processing scripts that consume local archives do not need manifests by default;
+they should complete successfully or fail with a clear error.
 
 Typical manifest columns:
 

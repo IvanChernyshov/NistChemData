@@ -13,7 +13,7 @@ from common import (
     RIGHTS_STATUS,
     SOURCE_DATABASE,
     append_manifest_row,
-    completed_ids_from_manifest,
+    completed_ids_for_download,
     ensure_parent,
     filter_index_rows,
     format_archive_members,
@@ -93,7 +93,6 @@ def download_mol3d(
     max_attempts: int = 3,
     ids: list[str] | None = None,
     limit: int | None = None,
-    rerun_completed: bool = False,
 ) -> None:
     '''Download available 3D structures into a local raw MOL ZIP archive.
 
@@ -105,9 +104,6 @@ def download_mol3d(
         max_attempts: Maximum number of request attempts.
         ids: Optional ordered list of compound IDs to process.
         limit: Optional maximum number of index rows to process.
-        rerun_completed: If true, ignore existing archive members and download
-            selected records again. ZIP files cannot replace members in place;
-            re-downloaded members are appended with the same member names.
 
     '''
     config = make_request_config(crawl_delay, timeout, max_attempts)
@@ -120,21 +116,18 @@ def download_mol3d(
     ensure_parent(path_manifest)
 
     try:
-        archive_state = mol_archive_members_by_compound(path_out, require_nonempty=True)
+        archive_state = mol_archive_members_by_compound(
+            path_out, require_nonempty=True
+        )
     except zipfile.BadZipFile as exc:
         raise RuntimeError(f'Invalid ZIP archive: {path_out}') from exc
 
-    completed_ids = set()
-    if not rerun_completed:
-        completed_ids = completed_ids_from_manifest(
-            path_manifest,
-            data_type=DATA_TYPE,
-            path_archive=path_out,
-            require_archive_members=True,
-        )
-        # Existing non-empty MOL members are also valid resume state. This lets
-        # users reuse older local raw archives even when no manifest exists.
-        completed_ids.update(archive_state)
+    completed_ids = completed_ids_for_download(
+        path_manifest,
+        data_type=DATA_TYPE,
+        path_archive=path_out,
+        archive_state=archive_state,
+    )
 
     for _, row in tqdm(rows.iterrows(), total=len(rows)):
         compound_id = str(row['ID'])
@@ -149,7 +142,7 @@ def download_mol3d(
         existing_member = existing_for_compound.get(member_name)
 
         try:
-            if existing_member is not None and not rerun_completed:
+            if existing_member is not None:
                 archive_members.append(existing_member)
             else:
                 mol_text = fetch_mol3d_text(source_url, config)
@@ -233,11 +226,6 @@ def get_arguments() -> argparse.Namespace:
         help='maximum request attempts',
     )
     parser.add_argument(
-        '--rerun-completed',
-        action='store_true',
-        help='download selected records even if matching MOL members exist',
-    )
-    parser.add_argument(
         '--accept-data-terms',
         action='store_true',
         help='acknowledge that generated files are local artifacts',
@@ -286,7 +274,6 @@ def main() -> None:
         max_attempts=args.max_attempts,
         ids=ids,
         limit=args.limit,
-        rerun_completed=args.rerun_completed,
     )
     print()
 

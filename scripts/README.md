@@ -54,6 +54,12 @@ local-data/
     nist_mol3D_raw.zip
     nist_gc_parts.zip
   processed/
+    nist_ms.jsonl
+    nist_ir_info.csv
+    nist_mol3D.sdf
+    nist_mol3D.zip
+    nist_gc.csv
+    nist_gc.zip
   manifests/
 ```
 
@@ -88,11 +94,13 @@ python scripts/download_spectra.py IR --limit 5 --accept-data-terms
 ```
 
 Resume behavior uses both the manifest and the ZIP archive. By default, a
-compound is skipped if the manifest is valid or if the archive already contains
-non-empty matching JDX files, including files stored under a legacy top-level
-folder such as `TZ/B7000012_TZ_0.jdx`. To scan source pages and repair
-potentially missing spectrum indexes without re-downloading existing JDX files,
-use:
+compound is skipped if the latest manifest row is a valid `done` row or, when no
+manifest row exists for that compound, if the archive already contains non-empty
+matching JDX files, including files stored under a legacy top-level folder such
+as `TZ/B7000012_TZ_0.jdx`. If the latest manifest row is `error`, `no_data`, or
+an invalid `done` row, the compound is checked again. To scan source pages and
+repair potentially missing spectrum indexes without re-downloading existing JDX
+files, use:
 
 ```bash
 python scripts/download_spectra.py TZ \
@@ -148,8 +156,9 @@ python scripts/process_ir_spectra.py --limit 10 --accept-data-terms
 `download_mol3D.py` downloads available WebBook 3D structure records into a
 local raw MOL ZIP archive. The ZIP members use the legacy-compatible root-level
 name pattern `{ID}.mol`. Resume behavior uses both the manifest and existing
-non-empty MOL archive members, so older local raw archives can be reused without
-re-downloading records.
+non-empty MOL archive members. Archive-only state is trusted only for compounds
+with no manifest row; a latest `error`, `no_data`, or invalid `done` row triggers
+a repair attempt.
 
 Example:
 
@@ -205,9 +214,10 @@ R32777_Kovats' RI_non-polar column_isothermal.csv
 ```
 
 This means old loose GC CSV files can usually be repacked into the raw ZIP and
-reused without re-downloading. By default, a compound with existing non-empty GC
-CSV members is skipped. Use `--verify-existing-archive` to scan WebBook source
-pages and download only missing table parts.
+reused without re-downloading. Archive-only state is trusted only for compounds
+with no manifest row; a latest `error`, `no_data`, or invalid `done` row triggers
+a repair attempt. Use `--verify-existing-archive` to scan WebBook source pages
+and download only missing table parts.
 
 Example:
 
