@@ -1,5 +1,12 @@
 # NistChemData
 
+> [!WARNING]
+> **The generated data files were removed from this repository.**
+>
+> Earlier versions of NistChemData included local files generated from the NIST Chemistry WebBook / SRD 69. These files were removed to avoid redistributing NIST Standard Reference Data and to keep this repository limited to original scripts, documentation, and local reconstruction workflows.
+>
+> If you previously used the bundled data files, please regenerate them locally with the scripts in `scripts/`. Generated local files are not covered by the repository MIT license; see `DATA_NOTICE.md` for details.
+
 **NistChemData** is a historical companion repository for scripts and and
 documentation for local reconstruction of selected working files from the
 [NIST Chemistry WebBook](https://webbook.nist.gov/) / SRD 69.
