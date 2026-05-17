@@ -42,8 +42,35 @@ These paths are ignored by Git.
 
 ## Current scripts
 
-- `download_spectra.py` downloads local raw JDX archives for IR, THz IR, mass,
-  and UV/Visible spectra.
+### `download_spectra.py`
+
+`download_spectra.py` downloads local raw JDX archives for IR, THz IR, mass,
+and UV/Visible spectra. It writes directly to a local ZIP archive and records a
+small CSV manifest for restart/provenance checks.
+
+Example:
+
+```bash
+python scripts/download_spectra.py MS \
+  --out local-data/raw/spectra/nist_MS.zip \
+  --manifest local-data/manifests/nist_MS_manifest.csv \
+  --crawl-delay 1.0 \
+  --timeout 30 \
+  --max-attempts 3 \
+  --accept-data-terms
+```
+
+For a small test run, use `--limit` or `--ids`:
+
+```bash
+python scripts/download_spectra.py IR --limit 5 --accept-data-terms
+```
+
+### Remaining scripts
+
+The remaining scripts are still being migrated from the earlier data-repository
+workflow to the local reconstruction workflow:
+
 - `process_ms_spectra.py` converts a local raw MS JDX archive into a local JSON
   peak-list file.
 - `process_ir_spectra.py` extracts metadata from a local raw IR JDX archive.
@@ -52,6 +79,5 @@ These paths are ignored by Git.
 - `download_gas_chromatography.py` downloads local gas-chromatography retention
   index tables and can assemble a local combined table.
 
-The current implementations are being migrated from the earlier data-repository
-workflow to a local reconstruction workflow. Future updates will add explicit
-local archive outputs, manifests, and data-scope acknowledgement flags.
+Future updates will migrate these scripts to the same explicit local-output,
+manifest, and data-scope acknowledgement pattern.

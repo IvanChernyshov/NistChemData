@@ -1,140 +1,396 @@
-'''Downloads NIST Chemistry WebBook spectra'''
+'''Download local NIST Chemistry WebBook spectrum archives.'''
 
-#%% Imports
+from __future__ import annotations
 
-import os, sys, argparse
+import argparse
+import re
+import sys
+import zipfile
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from tqdm import tqdm
 
-import nistchempy as nist
+from common import (
+    MANIFEST_COLUMNS,
+    NIST_SEARCH_URL,
+    RIGHTS_STATUS,
+    SOURCE_DATABASE,
+    append_manifest_row,
+    completed_ids_from_manifest,
+    ensure_parent,
+    existing_zip_members,
+    filter_index_rows,
+    format_archive_members,
+    load_webbook_index,
+    make_request_config,
+    normalize_spectrum_type,
+    request_nist,
+    require_data_terms_acknowledgement,
+    split_id_argument,
+    spectrum_download_type,
+    spectrum_search_column,
+    utc_now,
+)
 
 
-#%% Functions
+DEFAULT_OUTPUTS = {
+    'IR': 'local-data/raw/spectra/nist_IR.zip',
+    'TZ': 'local-data/raw/spectra/nist_TZ.zip',
+    'MS': 'local-data/raw/spectra/nist_MS.zip',
+    'UV': 'local-data/raw/spectra/nist_UV.zip',
+}
 
-def download_spectra(dir_out: str, spec_type: str, crawl_delay: float = 1.0,
-                     timeout: float = 30.0) -> None:
-    '''Downloads NIST Chemistry WebBook spectra of the given type
-    
-    Arguments:
-        dir_out (str): output directory for JDX files
-        spec_type (str): IR / TZ / MS / UV
-        crawl_delay (float): interval between series of requests for different compounds, seconds
-        timeout (float): max time to get response, seconds
-    
+DEFAULT_MANIFESTS = {
+    'IR': 'local-data/manifests/nist_IR_manifest.csv',
+    'TZ': 'local-data/manifests/nist_TZ_manifest.csv',
+    'MS': 'local-data/manifests/nist_MS_manifest.csv',
+    'UV': 'local-data/manifests/nist_UV_manifest.csv',
+}
+
+
+def extract_spectrum_indexes(soup) -> list[str]:
+    '''Extract unique spectrum indexes from a WebBook spectrum page.
+
+    Args:
+        soup: BeautifulSoup object from a NistChemPy response.
+
+    Returns:
+        Sorted list of unique spectrum indexes as strings.
+
     '''
-    
-    # get correct column name
-    key = 'c' + spec_type.upper()
-    col = nist.get_search_parameters().get(key, None)
-    # get correct download method
-    key = 'thz' if spec_type.lower() == 'tz' else spec_type.lower()
-    method = f'get_{key}_spectra'
-    specs = f'{key}_specs'
-    save = f'save_{key}_spectra'
-    # get IDs to download
-    df = nist.get_all_data()
-    IDs = sorted(list(df.loc[~df[col].isna(), 'ID'].values))
-    
-    # filter already downloaded
-    loaded = sorted(list(set([f.split('_')[0] for f in os.listdir(dir_out)])))
-    loaded = set(loaded[:-1]) # reload the last one
-    IDs = [ID for ID in IDs if ID not in loaded]
-    
-    # requests config
-    cfg = nist.RequestConfig(delay=crawl_delay, kwargs={'timeout': timeout})
-    
-    # start downloading
-    for ID in tqdm(IDs):
+    if soup is None:
+        return []
+
+    indexes = []
+    refs = soup.find_all(attrs={'href': re.compile('Index=')})
+    for ref in refs:
+        href = ref.attrs.get('href')
+        if not href:
+            continue
+        query = parse_qs(urlparse(href).query)
+        indexes.extend(query.get('Index', []))
+
+    return sorted(set(indexes), key=_index_sort_key)
+
+
+def _index_sort_key(value: str) -> tuple[int, str]:
+    '''Return a stable natural-ish sort key for WebBook spectrum indexes.'''
+    try:
+        return (int(value), value)
+    except ValueError:
+        return (sys.maxsize, value)
+
+
+def fetch_spectrum_indexes(source_url: str, config) -> list[str]:
+    '''Fetch a spectrum section page and return available spectrum indexes.
+
+    Args:
+        source_url: WebBook section URL from the NistChemPy index.
+        config: NistChemPy request configuration.
+
+    Returns:
+        Sorted list of spectrum indexes.
+
+    Raises:
+        RuntimeError: If the spectrum section page cannot be loaded.
+
+    '''
+    response = request_nist(source_url, config=config)
+    if not response.ok:
+        status = getattr(response.response, 'status_code', 'unknown')
+        raise RuntimeError(f'failed to load spectrum page, HTTP status {status}')
+
+    return extract_spectrum_indexes(response.soup)
+
+
+def fetch_spectrum_jdx(compound_id: str, spec_type: str, spec_idx: str, config) -> str:
+    '''Download one JDX spectrum file.
+
+    Args:
+        compound_id: NIST Chemistry WebBook compound ID.
+        spec_type: Spectrum type: IR, TZ, MS, or UV.
+        spec_idx: Spectrum index on the WebBook page.
+        config: NistChemPy request configuration.
+
+    Returns:
+        JDX text.
+
+    Raises:
+        RuntimeError: If the JDX file cannot be loaded.
+
+    '''
+    params = {
+        'JCAMP': compound_id,
+        'Index': spec_idx,
+        'Type': spectrum_download_type(spec_type),
+    }
+    response = request_nist(NIST_SEARCH_URL, params=params, config=config)
+    if not response.ok:
+        status = getattr(response.response, 'status_code', 'unknown')
+        raise RuntimeError(
+            f'failed to load {spec_type} spectrum {spec_idx}, HTTP status {status}'
+        )
+    if not response.text:
+        raise RuntimeError(f'empty {spec_type} spectrum {spec_idx}')
+
+    return response.text
+
+
+def write_manifest(
+    path_manifest: str | Path,
+    compound_id: str,
+    data_type: str,
+    status: str,
+    n_files: int,
+    archive_members: list[str],
+    source_url: str,
+    message: str = '',
+) -> None:
+    '''Append one spectrum-download row to the manifest.'''
+    append_manifest_row(
+        path_manifest,
+        {
+            'retrieved_at': utc_now(),
+            'compound_id': compound_id,
+            'data_type': data_type,
+            'status': status,
+            'n_files': n_files,
+            'archive_members': format_archive_members(archive_members),
+            'source_url': source_url,
+            'source_database': SOURCE_DATABASE,
+            'rights_status': RIGHTS_STATUS,
+            'message': message,
+        },
+        columns=MANIFEST_COLUMNS,
+    )
+
+
+def download_spectra(
+    path_out: str | Path,
+    spec_type: str,
+    path_manifest: str | Path,
+    crawl_delay: float = 1.0,
+    timeout: float = 30.0,
+    max_attempts: int = 3,
+    ids: list[str] | None = None,
+    limit: int | None = None,
+    rerun_completed: bool = False,
+) -> None:
+    '''Download available spectra of one type into a local ZIP archive.
+
+    Args:
+        path_out: Output ZIP archive path.
+        spec_type: Spectrum type: IR, TZ, MS, or UV.
+        path_manifest: CSV manifest path.
+        crawl_delay: Delay after HTTP requests, in seconds.
+        timeout: Per-request timeout, in seconds.
+        max_attempts: Maximum number of request attempts.
+        ids: Optional ordered list of compound IDs to process.
+        limit: Optional maximum number of index rows to process.
+        rerun_completed: If false, skip IDs already marked as done in the
+            manifest. Failed and no-data rows are retried naturally because
+            only done rows are skipped.
+
+    '''
+    spec_type = normalize_spectrum_type(spec_type)
+    data_type = f'{spec_type}_spectrum'
+    column = spectrum_search_column(spec_type)
+
+    config = make_request_config(crawl_delay, timeout, max_attempts)
+    df = load_webbook_index()
+    rows = filter_index_rows(df, column, ids=ids, limit=limit)
+
+    path_out = Path(path_out)
+    path_manifest = Path(path_manifest)
+    ensure_parent(path_out)
+    ensure_parent(path_manifest)
+
+    completed_ids = set()
+    if not rerun_completed:
+        completed_ids = completed_ids_from_manifest(path_manifest, data_type=data_type)
+
+    existing_members = existing_zip_members(path_out)
+
+    for _, row in tqdm(rows.iterrows(), total=len(rows)):
+        compound_id = str(row['ID'])
+        source_url = str(row[column])
+
+        if compound_id in completed_ids:
+            continue
+
+        archive_members = []
         try:
-            # load compound
-            X = nist.get_compound(ID, cfg)
-            if not X:
-                tqdm.write(f'Can not load the compound: {ID}')
-                pass
-            # load spectra
-            getattr(X, method)()
-            n_specs = len(getattr(X, specs))
-            if not n_specs:
-                tqdm.write(f'No spectra were downloaded for the compound: {ID}')
+            indexes = fetch_spectrum_indexes(source_url, config)
+            if not indexes:
+                tqdm.write(f'No {spec_type} spectrum indexes found for {compound_id}')
+                write_manifest(
+                    path_manifest,
+                    compound_id,
+                    data_type,
+                    'no_data',
+                    0,
+                    [],
+                    source_url,
+                    'no spectrum indexes found on source page',
+                )
                 continue
-            # save spectra
-            getattr(X, save)(dir_out)
+
+            with zipfile.ZipFile(path_out, 'a', compression=zipfile.ZIP_DEFLATED) as zipf:
+                for spec_idx in indexes:
+                    member_name = f'{compound_id}_{spec_type}_{spec_idx}.jdx'
+                    archive_members.append(member_name)
+                    if member_name in existing_members:
+                        continue
+
+                    jdx_text = fetch_spectrum_jdx(
+                        compound_id,
+                        spec_type,
+                        spec_idx,
+                        config,
+                    )
+                    zipf.writestr(member_name, jdx_text)
+                    existing_members.add(member_name)
+
+            write_manifest(
+                path_manifest,
+                compound_id,
+                data_type,
+                'done',
+                len(archive_members),
+                archive_members,
+                source_url,
+            )
         except (KeyboardInterrupt, SystemExit):
             tqdm.write('The code execution was interrupted')
-            sys.exit()
-        except:
-            tqdm.write(f'Error while processing compound # {ID}')
-    
-    return
+            raise
+        except Exception as exc:
+            tqdm.write(f'Error while processing compound {compound_id}: {exc}')
+            write_manifest(
+                path_manifest,
+                compound_id,
+                data_type,
+                'error',
+                len(archive_members),
+                archive_members,
+                source_url,
+                str(exc),
+            )
 
-
-
-#%% Main functions
 
 def get_arguments() -> argparse.Namespace:
-    '''CLI wrapper
-    
+    '''Parse command-line arguments.
+
     Returns:
-        argparse.Namespace: CLI arguments
-    
+        Parsed CLI arguments.
+
     '''
-    parser = argparse.ArgumentParser(description = 'Downloads all available NIST Chemistry WebBook spectra of the given type')
-    parser.add_argument('dir_out', help = 'directory to save downloaded spectra')
-    parser.add_argument('spec_type', help = 'type of spectra: IR, TZ, MS, UV')
-    parser.add_argument('--crawl-delay', type = float, default = 0.25,
-                        help = 'pause between HTTP requests, seconds')
-    parser.add_argument('--timeout', type = float, default = 10.0,
-                        help = 'max time to get response, seconds')
-    args = parser.parse_args()
-    
-    return args
+    parser = argparse.ArgumentParser(
+        description='Download local NIST Chemistry WebBook spectrum archives.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument('spec_type', help='spectrum type: IR, TZ, MS, or UV')
+    parser.add_argument(
+        '--out',
+        help='output ZIP archive path; defaults to local-data/raw/spectra',
+    )
+    parser.add_argument(
+        '--manifest',
+        help='CSV manifest path; defaults to local-data/manifests',
+    )
+    parser.add_argument(
+        '--ids',
+        help='comma-separated compound IDs to process instead of all available IDs',
+    )
+    parser.add_argument(
+        '--limit',
+        type=int,
+        help='maximum number of index rows to process',
+    )
+    parser.add_argument(
+        '--crawl-delay',
+        type=float,
+        default=1.0,
+        help='pause after HTTP requests, seconds',
+    )
+    parser.add_argument(
+        '--timeout',
+        type=float,
+        default=30.0,
+        help='per-request timeout, seconds',
+    )
+    parser.add_argument(
+        '--max-attempts',
+        type=int,
+        default=3,
+        help='maximum request attempts',
+    )
+    parser.add_argument(
+        '--rerun-completed',
+        action='store_true',
+        help='do not skip IDs already marked as done in the manifest',
+    )
+    parser.add_argument(
+        '--accept-data-terms',
+        action='store_true',
+        help='acknowledge that generated files are local artifacts',
+    )
+
+    return parser.parse_args()
 
 
 def check_arguments(args: argparse.Namespace) -> None:
-    '''Checks arguments
-    
-    Arguments:
-        args (argparse.Namespace): input parameters
-    
+    '''Validate command-line arguments.
+
+    Args:
+        args: Parsed CLI arguments.
+
+    Raises:
+        ValueError: If an argument is invalid.
+
     '''
-    # check save dir
-    if not os.path.exists(args.dir_out):
-        os.mkdir(args.dir_out) # FilexExistsError / FileNotFoundError
-    if not os.path.isdir(args.dir_out):
-        raise ValueError(f'Given dir_out argument is not a directory: {args.dir_out}')
-    # spec type
-    if args.spec_type not in ('IR', 'TZ', 'MS', 'UV'):
-        raise ValueError(f'Spectra type argumant must be one of IR / TZ / MS / UV:: {args.spec_type}')
-    # crawl delay
+    args.spec_type = normalize_spectrum_type(args.spec_type)
+
+    if args.out is None:
+        args.out = DEFAULT_OUTPUTS[args.spec_type]
+    if args.manifest is None:
+        args.manifest = DEFAULT_MANIFESTS[args.spec_type]
+
+    if args.limit is not None and args.limit <= 0:
+        raise ValueError(f'--limit must be positive: {args.limit}')
     if args.crawl_delay < 0:
-        raise ValueError(f'--crawl-delay must be positive: {args.crawl_delay}')
-    # timeout
+        raise ValueError(f'--crawl-delay must be non-negative: {args.crawl_delay}')
     if args.timeout <= 0:
         raise ValueError(f'--timeout must be positive: {args.timeout}')
-    
-    return
+    if args.max_attempts <= 0:
+        raise ValueError(f'--max-attempts must be positive: {args.max_attempts}')
 
 
 def main() -> None:
-    '''Extracts info on NIST Chemistry WebBook compounds and saves to csv file'''
-    
-    # prepare arguments
+    '''Download local raw spectrum archives.'''
     args = get_arguments()
     check_arguments(args)
-    
-    # download spectra
+    require_data_terms_acknowledgement(args.accept_data_terms)
+
+    ids = split_id_argument(args.ids)
+
     print(f'\nDownloading {args.spec_type} spectra ...')
-    download_spectra(args.dir_out, args.spec_type, args.crawl_delay, args.timeout)
+    print(f'Output archive: {args.out}')
+    print(f'Manifest: {args.manifest}')
+
+    download_spectra(
+        args.out,
+        args.spec_type,
+        args.manifest,
+        crawl_delay=args.crawl_delay,
+        timeout=args.timeout,
+        max_attempts=args.max_attempts,
+        ids=ids,
+        limit=args.limit,
+        rerun_completed=args.rerun_completed,
+    )
     print()
-    
-    return
 
-
-
-#%% Main
 
 if __name__ == '__main__':
-    
     main()
-
-
