@@ -112,19 +112,30 @@ def make_request_config(
     )
 
 
-def load_webbook_index() -> Any:
-    '''Load the current NistChemPy WebBook index.
+def load_webbook_index(path: str | Path | None = None) -> Any:
+    '''Load a user-local NistChemPy WebBook index table.
 
-    This is a temporary compatibility layer for NistChemPy 1.0.6. That version
-    exposes a package-internal index through ``nist.get_all_data()``. After
-    NistChemPy is refactored to a user-local index/cache, this function should
-    be the only place that needs to change in NistChemData.
+    Args:
+        path: Optional NistChemPy local index directory or CSV path. If omitted,
+            NistChemPy resolves its default path, including the
+            ``NISTCHEMPY_INDEX_PATH`` environment variable.
 
     Returns:
-        Pandas DataFrame returned by ``nist.get_all_data()``.
+        Pandas DataFrame returned by ``nist.get_local_index(path).to_dataframe()``.
+
+    Raises:
+        RuntimeError: If the installed NistChemPy version does not expose the
+            2.0 local-index API.
 
     '''
-    return nist.get_all_data()
+    try:
+        index = nist.get_local_index(path)
+    except AttributeError as exc:
+        raise RuntimeError(
+            'NistChemData requires NistChemPy 2.0.0 or newer with the '
+            'user-local WebBook index API.'
+        ) from exc
+    return index.to_dataframe()
 
 
 def request_nist(

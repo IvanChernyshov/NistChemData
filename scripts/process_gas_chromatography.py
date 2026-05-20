@@ -40,14 +40,19 @@ def _id_sort_key(compound_id: str) -> tuple[str, int, str]:
     return prefix, number, compound_id
 
 
-def load_compound_metadata() -> dict[str, dict[str, object]]:
+def load_compound_metadata(
+    index_path: str | Path | None = None,
+) -> dict[str, dict[str, object]]:
     '''Load compound name/InChI metadata from the NistChemPy index.
+
+    Args:
+        index_path: Optional NistChemPy local index directory or CSV path.
 
     Returns:
         Mapping from compound ID to metadata dictionaries.
 
     '''
-    df = load_webbook_index()
+    df = load_webbook_index(index_path)
     cols = ['ID', 'name', 'inchi']
     missing = [col for col in cols if col not in df.columns]
     if missing:
@@ -164,6 +169,7 @@ def process_gas_chromatography(
     path_zip_csv: str | Path | None = None,
     ids: list[str] | None = None,
     limit: int | None = None,
+    index_path: str | Path | None = None,
 ) -> None:
     '''Combine local raw GC CSV parts into one table.
 
@@ -173,6 +179,7 @@ def process_gas_chromatography(
         path_zip_csv: Optional ZIP archive path for the generated CSV file.
         ids: Optional ordered compound-ID filter.
         limit: Optional maximum number of raw parts to process.
+        index_path: Optional NistChemPy local index directory or CSV path.
 
     '''
     path_zip = Path(path_zip)
@@ -185,7 +192,7 @@ def process_gas_chromatography(
     if not members:
         raise ValueError(f'No non-empty GC CSV members found in archive: {path_zip}')
 
-    compound_metadata = load_compound_metadata()
+    compound_metadata = load_compound_metadata(index_path)
     tables = []
 
     with zipfile.ZipFile(path_zip, 'r') as zipf:
@@ -250,6 +257,10 @@ def get_arguments() -> argparse.Namespace:
         help='comma-separated compound IDs to process instead of all archive members',
     )
     parser.add_argument(
+        '--index-path',
+        help='NistChemPy local index directory or CSV path',
+    )
+    parser.add_argument(
         '--limit',
         type=int,
         help='maximum number of raw GC parts to process',
@@ -297,6 +308,7 @@ def main() -> None:
         path_zip_csv=args.zip_output,
         ids=ids,
         limit=args.limit,
+        index_path=args.index_path,
     )
     print()
 

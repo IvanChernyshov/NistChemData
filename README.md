@@ -7,10 +7,10 @@
 >
 > If you previously used the bundled data files, please regenerate them locally with the scripts in `scripts/`. Generated local files are not covered by the repository MIT license; see `DATA_NOTICE.md` for details.
 
-**NistChemData** is a historical companion repository for scripts and and
+**NistChemData** is a historical companion repository for scripts and
 documentation for local reconstruction of selected working files from the
 [NIST Chemistry WebBook](https://webbook.nist.gov/) / SRD 69.
-NistChemData uses [NistChemPy](https://github.com/IvanChernyshov/NistChemPy) as
+NistChemData uses [NistChemPy](https://github.com/muCommons/NistChemPy) as
 its access and parsing layer.
 
 The cleaned public repository does **not** redistribute extracted WebBook-derived
@@ -75,6 +75,32 @@ The scripts should be run only after reviewing the data notice. Download and
 processing commands require `--accept-data-terms` or the
 `NISTCHEMDATA_ACCEPT_DATA_TERMS=1` environment variable before generating local
 WebBook-derived files.
+
+## Required local WebBook index
+
+NistChemData no longer depends on a packaged WebBook index from older
+NistChemPy releases. Before running scripts, build or import a user-local
+NistChemPy index:
+
+```bash
+nistchempy index path
+nistchempy index build --path ./webbook-index --accept-data-terms
+nistchempy index status --path ./webbook-index
+```
+
+A complete page-enriched index can take several days with a polite request
+delay. The generated index is a local user artifact and should not be committed
+or redistributed.
+
+Scripts read the default NistChemPy index path unless `--index-path` is passed
+or `NISTCHEMPY_INDEX_PATH` is set. For example:
+
+```bash
+python scripts/download_spectra.py MS \
+  --index-path ./webbook-index \
+  --limit 5 \
+  --accept-data-terms
+```
 
 ## Citation and source acknowledgement
 

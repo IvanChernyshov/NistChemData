@@ -20,11 +20,29 @@ Install the core script requirements from:
 pip install -r scripts/requirements.txt
 ```
 
-The requirements intentionally pin `nistchempy==1.0.6`. This version still
-provides the packaged WebBook index used by the current local reconstruction
-scripts. After NistChemPy is changed to use a local user-generated index,
-NistChemData should be updated accordingly rather than silently accepting a new
-major/index API behavior.
+The requirements use the NistChemPy 2.0 development/release line. That line
+loads WebBook metadata from a user-local index instead of a packaged index. If
+2.0 is not published yet, install NistChemPy from the sibling repository before
+running these scripts.
+
+Build or import a local NistChemPy index before running download or processing
+commands that need compound metadata or section availability:
+
+```bash
+nistchempy index path
+nistchempy index build --path ./webbook-index --accept-data-terms
+nistchempy index status --path ./webbook-index
+```
+
+Scripts use NistChemPy's default index path, including `NISTCHEMPY_INDEX_PATH`,
+unless an explicit `--index-path` is passed. For example:
+
+```bash
+python scripts/download_spectra.py IR \
+  --index-path ./webbook-index \
+  --limit 5 \
+  --accept-data-terms
+```
 
 Optional RDKit validation for `process_mol3D.py --validate` requires RDKit. If
 pip installation is suitable for your platform, you can install the optional

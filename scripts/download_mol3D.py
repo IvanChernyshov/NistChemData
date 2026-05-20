@@ -91,6 +91,7 @@ def download_mol3d(
     crawl_delay: float = 1.0,
     timeout: float = 30.0,
     max_attempts: int = 3,
+    index_path: str | Path | None = None,
     ids: list[str] | None = None,
     limit: int | None = None,
 ) -> None:
@@ -102,12 +103,13 @@ def download_mol3d(
         crawl_delay: Delay after HTTP requests, in seconds.
         timeout: Per-request timeout, in seconds.
         max_attempts: Maximum number of request attempts.
+        index_path: Optional NistChemPy local index directory or CSV path.
         ids: Optional ordered list of compound IDs to process.
         limit: Optional maximum number of index rows to process.
 
     '''
     config = make_request_config(crawl_delay, timeout, max_attempts)
-    df = load_webbook_index()
+    df = load_webbook_index(index_path)
     rows = filter_index_rows(df, SOURCE_COLUMN, ids=ids, limit=limit)
 
     path_out = Path(path_out)
@@ -203,6 +205,10 @@ def get_arguments() -> argparse.Namespace:
         help='comma-separated compound IDs to process instead of all available IDs',
     )
     parser.add_argument(
+        '--index-path',
+        help='NistChemPy local index directory or CSV path',
+    )
+    parser.add_argument(
         '--limit',
         type=int,
         help='maximum number of index rows to process',
@@ -272,6 +278,7 @@ def main() -> None:
         crawl_delay=args.crawl_delay,
         timeout=args.timeout,
         max_attempts=args.max_attempts,
+        index_path=args.index_path,
         ids=ids,
         limit=args.limit,
     )

@@ -160,8 +160,13 @@ def parse_ir_member_name(member_name: str) -> tuple[str, str] | None:
     return match.group('compound_id'), match.group('spec_idx')
 
 
-def load_compound_metadata() -> dict[str, dict[str, Any]]:
+def load_compound_metadata(
+    index_path: str | Path | None = None,
+) -> dict[str, dict[str, Any]]:
     '''Load compound names and InChI strings from the NistChemPy index.
+
+    Args:
+        index_path: Optional NistChemPy local index directory or CSV path.
 
     Returns:
         Mapping from WebBook compound ID to a metadata dictionary.
@@ -170,7 +175,7 @@ def load_compound_metadata() -> dict[str, dict[str, Any]]:
         ValueError: If the NistChemPy index lacks required columns.
 
     '''
-    df = load_webbook_index()
+    df = load_webbook_index(index_path)
     required = ['ID', 'name', 'inchi']
     missing = [column for column in required if column not in df.columns]
     if missing:
@@ -315,6 +320,7 @@ def process_ir_spectra(
     path_out: str | Path,
     ids: list[str] | None = None,
     limit: int | None = None,
+    index_path: str | Path | None = None,
 ) -> None:
     '''Extract IR metadata from a local raw JDX ZIP archive.
 
@@ -323,13 +329,14 @@ def process_ir_spectra(
         path_out: Output CSV path.
         ids: Optional ordered compound-ID filter.
         limit: Optional maximum number of selected members to process.
+        index_path: Optional NistChemPy local index directory or CSV path.
 
     Raises:
         ValueError: If no IR JDX members are found.
         RuntimeError: If any selected JDX member cannot be processed.
 
     '''
-    metadata = load_compound_metadata()
+    metadata = load_compound_metadata(index_path)
     rows = []
 
     with zipfile.ZipFile(path_zip, 'r') as zipf:

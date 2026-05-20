@@ -133,14 +133,19 @@ def parse_ms_member_name(member_name: str) -> tuple[str, str] | None:
     return match.group('compound_id'), match.group('spec_idx')
 
 
-def load_compound_metadata() -> dict[str, dict[str, Any]]:
+def load_compound_metadata(
+    index_path: str | Path | None = None,
+) -> dict[str, dict[str, Any]]:
     '''Load compound names and InChI strings from the NistChemPy index.
+
+    Args:
+        index_path: Optional NistChemPy local index directory or CSV path.
 
     Returns:
         Mapping from WebBook compound ID to a metadata dictionary.
 
     '''
-    df = load_webbook_index()
+    df = load_webbook_index(index_path)
     required = ['ID', 'name', 'inchi']
     missing = [column for column in required if column not in df.columns]
     if missing:
@@ -221,6 +226,7 @@ def process_ms_spectra(
     ids: list[str] | None = None,
     limit: int | None = None,
     output_format: str | None = None,
+    index_path: str | Path | None = None,
 ) -> None:
     '''Process a local raw MS archive and write peak-list records.
 
@@ -233,6 +239,7 @@ def process_ms_spectra(
         limit: Optional maximum number of selected members to process.
         output_format: Optional explicit output format. If omitted, ``.json``
             outputs a JSON array and all other suffixes use JSON Lines.
+        index_path: Optional NistChemPy local index directory or CSV path.
 
     Raises:
         ValueError: If ``spectrum_policy`` or ``output_format`` is unsupported.
@@ -242,7 +249,7 @@ def process_ms_spectra(
         raise ValueError(f'Unsupported spectrum policy: {spectrum_policy}')
 
     resolved_output_format = infer_output_format(path_out, output_format)
-    metadata = load_compound_metadata()
+    metadata = load_compound_metadata(index_path)
     data = []
 
     with zipfile.ZipFile(path_zip, 'r') as zipf:
@@ -323,6 +330,10 @@ def get_arguments() -> argparse.Namespace:
         help='comma-separated compound IDs to process instead of all available IDs',
     )
     parser.add_argument(
+        '--index-path',
+        help='NistChemPy local index directory or CSV path',
+    )
+    parser.add_argument(
         '--limit',
         type=int,
         help='maximum number of selected members to process',
@@ -371,6 +382,7 @@ def main() -> None:
         ids=ids,
         limit=args.limit,
         output_format=args.output_format,
+        index_path=args.index_path,
     )
     print()
 
